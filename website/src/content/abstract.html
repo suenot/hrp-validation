@@ -4,7 +4,7 @@ and is widely promoted as the practical cure for the instability of
 Markowitz optimization. We give this claim a controlled test in which
 the <em>true</em> covariance matrix is known by construction, so the
 realized risk of any weight vector is computable exactly as <span
-class="math inline">w^{\top}\Sig w</span> and the unconstrained
+class="math inline">w^{\top}\Sigma w</span> and the unconstrained
 minimum-variance oracle is an exact floor. Across <span
 class="math inline">4{,}800</span> experiments (<span
 class="math inline">4{,}000</span> Gaussian, <span
@@ -13,7 +13,7 @@ class="math inline">t</span>) spanning four true-correlation
 families—one-factor, nested hierarchical, unstructured (normalized
 Wishart), and equicorrelation—with <span
 class="math inline">N\in\{10,\dots,100\}</span> assets and estimation
-windows of <span class="math inline">\TN\in[0.5,10]</span>, the verdict
+windows of <span class="math inline">T/N\in[0.5,10]</span>, the verdict
 splits cleanly. (i) HRP’s <em>insurance value against naive Markowitz is
 real</em>: at <span class="math inline">T=N</span>, where the sample
 covariance is singular, sample minimum variance realizes a median <span
@@ -22,19 +22,19 @@ class="math inline">100\times</span> in <span
 class="math inline">9\%</span> of cases), while HRP realizes <span
 class="math inline">2.3\times</span>, beats sample minimum variance in
 <span class="math inline">87\%</span> of data-starved experiments (<span
-class="math inline">\TN\le1</span>; every single one in the unstructured
-family at <span class="math inline">\TN=0.5</span>), and never suffers
+class="math inline">T/N\le1</span>; every single one in the unstructured
+family at <span class="math inline">T/N=0.5</span>), and never suffers
 an inversion catastrophe. (ii) <em>Its advantage over shrinkage is
 mostly not</em>: Ledoit–Wolf minimum variance—equally inversion-proof,
 one line of scikit-learn—realizes <span
 class="math inline">1.8\times</span> at <span
 class="math inline">T=N</span> and beats HRP at every <span
-class="math inline">\TN</span> in the factor, hierarchical, and
+class="math inline">T/N</span> in the factor, hierarchical, and
 equicorrelation families; HRP’s win rate against it is <span
 class="math inline">0.34</span> at <span
-class="math inline">\TN\le1</span> and falls to <span
+class="math inline">T/N\le1</span> and falls to <span
 class="math inline">0.05</span> at <span
-class="math inline">\TN\ge5</span>, with HRP ahead only under
+class="math inline">T/N\ge5</span>, with HRP ahead only under
 unstructured correlation at small <span class="math inline">T</span>
 (win rate <span class="math inline">{\approx}0.55</span>). The <span
 class="math inline">1.8</span>-versus-<span
@@ -44,7 +44,7 @@ class="math inline">T=N</span> the pooled medians are a near-tie
 (clipped LW <span class="math inline">2.32\times</span> vs. HRP <span
 class="math inline">2.29\times</span>), though LW remains ahead in
 paired comparisons. (iii) HRP is <em>not a consistent minimum-variance
-estimator</em>: by <span class="math inline">\TN=10</span> sample and
+estimator</em>: by <span class="math inline">T/N=10</span> sample and
 shrunk minimum variance converge to <span
 class="math inline">{\approx}1.10\times</span> the oracle while HRP
 plateaus at <span class="math inline">1.40</span>–<span
@@ -56,13 +56,13 @@ in tightness (rising <span class="math inline">0.35\to0.56</span> across
 dispersion terciles of our hierarchical worlds), in the data-rich band
 it edges IV more broadly (win rates <span
 class="math inline">0.46</span>–<span class="math inline">0.63</span> at
-<span class="math inline">\TN\ge5</span>), and the much-debated linkage
+<span class="math inline">T/N\ge5</span>), and the much-debated linkage
 choice is immaterial (the three linkage medians agree to within <span
 class="math inline">0.02</span>–<span class="math inline">0.06</span>).
 (v) Estimated <em>means</em>, not estimated covariances, remain the real
 catastrophe: tangency portfolios built from estimated means capture a
 median <span class="math inline">10\%</span> of the oracle Sharpe ratio
-at <span class="math inline">\TN\le1</span> and are negative <span
+at <span class="math inline">T/N\le1</span> and are negative <span
 class="math inline">28\%</span> of the time. The Student-<span
 class="math inline">t</span> batch leaves every qualitative ranking
 unchanged. Practical reading: HRP is real insurance against inverting a
