@@ -1,0 +1,1887 @@
+<h1 id="introduction">Introduction</h1>
+<p>Markowitz mean–variance optimization <span class="citation"
+data-cites="markowitz1952portfolio">(Markowitz 1952)</span> is provably
+optimal with known inputs and notoriously fragile with estimated ones:
+the optimizer amplifies exactly the estimation errors that matter most
+<span class="citation"
+data-cites="michaud1989markowitz best1991sensitivity chopra1993effect">(Michaud
+1989; Best and Grauer 1991; Chopra and Ziemba 1993)</span>. The most
+influential recent response in practitioner circles is Hierarchical Risk
+Parity <span class="citation"
+data-cites="lopezdeprado2016building">(HRP; López de Prado 2016)</span>,
+which never inverts a matrix: it clusters assets by correlation
+distance, reorders the covariance into quasi-diagonal form, and
+allocates top-down by recursive inverse-variance bisection. HRP is now a
+default in several open-source portfolio libraries and is routinely
+recommended as the robust replacement for Markowitz.<a href="#fn1"
+class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
+<p>The evidence behind the recommendation is thinner than its adoption.
+The original paper demonstrates HRP on one numerical example and one
+Monte Carlo design, against unshrunk benchmarks; most follow-ups are
+empirical backtests in which the true covariance is unknown, so no one
+can say how far any allocator sits from the attainable optimum, or how
+much of its loss is estimation error versus specification error.
+Meanwhile the estimation-error literature has its own well-validated
+remedy—shrinkage <span class="citation"
+data-cites="ledoit2003improved ledoit2004well ledoit2004honey">(Ledoit
+and Wolf 2003, 2004a, 2004b)</span>—which is almost never the benchmark
+HRP is compared against.</p>
+<p>This paper supplies the missing controlled comparison. We generate
+the true covariance <span class="math inline">\Sigma</span> from four
+structural families chosen to span the cases where HRP’s clustering
+prior is right (nested hierarchical blocks), partially right (one common
+factor), and wrong (unstructured dense correlation; equicorrelation),
+hand every allocator the same finite sample of <span
+class="math inline">T</span> observations, and score the resulting
+weights <em>on the truth</em>: realized risk <span
+class="math inline">w^{\top}\Sigma w</span> against the exact
+unconstrained minimum-variance oracle. There is no backtest noise and no
+data snooping; the only randomness is the sampling error every estimator
+faces. We sweep the ratio <span class="math inline">T/N</span> from
+<span class="math inline">0.5</span> (deeply singular) to <span
+class="math inline">10</span> (data-rich), because the break-even
+results of <span class="citation"
+data-cites="demiguel2009optimal">DeMiguel et al. (2009)</span> identify
+exactly this ratio as the axis on which optimization beats naive
+rules.</p>
+<p>Our findings are deliberately mixed, and more useful for it. HRP’s
+headline story—“Markowitz explodes, HRP does not”—is confirmed, and
+quantified: at <span class="math inline">T=N</span> the sample
+minimum-variance portfolio realizes a median <span
+class="math inline">16.8\times</span> the oracle risk, HRP <span
+class="math inline">2.3\times</span>. But the comparison that
+practitioner writing rarely runs—HRP against Ledoit–Wolf shrinkage,
+which is equally inversion-proof and one line of scikit-learn—reverses
+the story almost everywhere: shrinkage wins at every <span
+class="math inline">T/N</span> in three of our four families, and HRP’s
+edge survives only where there is no structure for its dendrogram to
+find and very little data to estimate with. Linkage choice, the subject
+of a sizable applied debate, moves the median result by <span
+class="math inline">0.02</span>–<span class="math inline">0.06</span>
+depending on family; the dispersion of cluster tightness, which nobody
+debates, moves HRP’s data-starved win rate against its own
+inverse-variance core from <span class="math inline">0.35</span> to
+<span class="math inline">0.56</span>. And the classical disaster
+remains where <span class="citation"
+data-cites="demiguel2009optimal">DeMiguel et al. (2009)</span> located
+it: portfolios that estimate <em>means</em> capture a median <span
+class="math inline">10\%</span> of the attainable Sharpe ratio in the
+data-starved regime and are negative <span
+class="math inline">28\%</span> of the time.</p>
+<h4 id="contributions.">Contributions.</h4>
+<ol>
+<li><p>A reproducible known-covariance testbed for portfolio allocators:
+four true-correlation families with every generator parameter drawn from
+one disclosed sampling table and recorded per experiment, Gaussian and
+multivariate Student-<span class="math inline">t</span> returns, and
+exact evaluation of realized risk <span
+class="math inline">w^{\top}\Sigma w</span> against the exact
+minimum-variance oracle (Sections <a href="#sec:allocators"
+data-reference-type="ref" data-reference="sec:allocators">3</a>–<a
+href="#sec:setup" data-reference-type="ref"
+data-reference="sec:setup">5</a>).</p></li>
+<li><p>A quantification of HRP’s insurance value against naive Markowitz
+in the data-starved regime, and of its failure to converge in the
+data-rich regime: HRP’s realized-risk plateau at <span
+class="math inline">1.40</span>–<span
+class="math inline">3.20\times</span> the oracle isolates its
+specification gap, the loss it would retain even with the true
+covariance (Sections <a href="#sec:starved" data-reference-type="ref"
+data-reference="sec:starved">6.1</a>–<a href="#sec:rich"
+data-reference-type="ref" data-reference="sec:rich">6.2</a>).</p></li>
+<li><p>The comparison that matters and is rarely run: HRP versus
+Ledoit–Wolf shrinkage, stratified by structure family and <span
+class="math inline">T/N</span>, with win rates and paired log-ratios.
+Shrinkage wins almost everywhere; we delineate the exception
+(unstructured correlation, <span class="math inline">T/N\le1</span>) and
+show that even there plain inverse variance is better still (Section <a
+href="#sec:shrinkage" data-reference-type="ref"
+data-reference="sec:shrinkage">6.3</a>).</p></li>
+<li><p>Evidence on <em>which</em> of HRP’s ingredients matter:
+cluster-tightness dispersion does (data-starved win rate vs. inverse
+variance <span class="math inline">0.35\to0.56</span> across terciles),
+linkage does not (the three linkage medians agree to within <span
+class="math inline">0.02</span>–<span class="math inline">0.06</span>,
+and the distance-matrix convention behind the linkage moves them by at
+most <span class="math inline">0.02</span>), and HRP’s turnover and
+concentration profile is closer to inverse variance than to any
+optimizer (Sections <a href="#sec:ivp" data-reference-type="ref"
+data-reference="sec:ivp">6.4</a>–<a href="#sec:linkage"
+data-reference-type="ref"
+data-reference="sec:linkage">6.5</a>).</p></li>
+<li><p>A replication, inside the same harness, of the classical result
+that estimated means are the dominant failure mode: noisy-<span
+class="math inline">\mu</span> tangency directions capture a median
+<span class="math inline">10\%</span> of the oracle Sharpe at <span
+class="math inline">T/N\le1</span>, negative in <span
+class="math inline">28\%</span> of experiments—below every <span
+class="math inline">\mu</span>-free rule in the same regime, from sample
+minimum variance (<span class="math inline">18\%</span> pooled) to the
+diffuse rules of Table <a href="#tab:sharpe" data-reference-type="ref"
+data-reference="tab:sharpe">4</a> (<span
+class="math inline">26</span>–<span class="math inline">70\%</span>)
+(Section <a href="#sec:mu" data-reference-type="ref"
+data-reference="sec:mu">6.6</a>).</p></li>
+</ol>
+<h1 id="sec:related">Related work</h1>
+<h4 id="estimation-error-in-meanvariance-optimization.">Estimation error
+in mean–variance optimization.</h4>
+<p>Mean–variance portfolio selection <span class="citation"
+data-cites="markowitz1952portfolio">(Markowitz 1952)</span> is optimal
+only when its inputs are known; in practice they must be estimated, and
+the optimizer interacts badly with estimation noise. <span
+class="citation" data-cites="jobson1980estimation">Jobson and Korkie
+(1980)</span> showed in early Monte Carlo experiments that sample-based
+efficient portfolios can be dramatically inferior to the
+population-optimal ones, and <span class="citation"
+data-cites="jobson1981putting">Jobson and Korkie (1981)</span> argued
+that naive alternatives are often preferable in realistic sample sizes.
+<span class="citation" data-cites="michaud1989markowitz">Michaud
+(1989)</span> popularized the diagnosis of mean–variance optimizers as
+“estimation-error maximizers” that load on the most extreme—and most
+mis-estimated—inputs. Subsequent work quantified the mechanism: optimal
+weights are extremely sensitive to small perturbations of expected
+returns <span class="citation" data-cites="best1991sensitivity">(Best
+and Grauer 1991)</span>, errors in means dominate but covariance errors
+matter increasingly at high risk tolerance <span class="citation"
+data-cites="chopra1993effect">(Chopra and Ziemba 1993)</span>, and even
+with optimal Bayesian use of sample information, parameter uncertainty
+erodes most of the theoretical gains from optimization <span
+class="citation" data-cites="kan2007optimal">(Kan and Zhou 2007)</span>.
+The starkest statement of the problem is due to <span class="citation"
+data-cites="demiguel2009optimal">DeMiguel et al. (2009)</span>: across
+fourteen optimizing models and seven empirical datasets, none
+consistently outperforms the equally weighted <span
+class="math inline">1/N</span> portfolio out of sample, because the
+estimation window needed for sample-based mean–variance to win is far
+longer than anything available in practice. Their analysis ties the
+break-even point explicitly to the ratio of sample size to universe
+size—the same <span class="math inline">T/N</span> axis we stratify
+on.</p>
+<h4 id="covariance-focused-remedies.">Covariance-focused remedies.</h4>
+<p>One response is to abandon expected-return estimation and target the
+minimum-variance portfolio, which depends only on the covariance matrix
+and has performed well empirically <span class="citation"
+data-cites="clarke2006minimum clarke2011minimum">(Clarke et al. 2006;
+Clarke et al. 2011)</span>. But the covariance matrix itself is noisy
+when <span class="math inline">N</span> is large relative to <span
+class="math inline">T</span>. Random matrix theory shows that the bulk
+of sample correlation eigenvalues from financial data is
+indistinguishable from noise <span class="citation"
+data-cites="laloux1999noise plerou1999universal">(Laloux et al. 1999;
+Plerou et al. 1999)</span>, motivating a large literature on eigenvalue
+cleaning <span class="citation" data-cites="bun2017cleaning">(Bun et al.
+2017)</span>. Shrinkage estimators address the same ill-conditioning by
+pulling the sample covariance toward a structured target—a single-factor
+model <span class="citation" data-cites="ledoit2003improved">(Ledoit and
+Wolf 2003)</span>, a scaled identity with asymptotic optimality
+guarantees <span class="citation" data-cites="ledoit2004well">(Ledoit
+and Wolf 2004a)</span>, or the constant-correlation target of the widely
+used “Honey, I shrunk” estimator <span class="citation"
+data-cites="ledoit2004honey">(Ledoit and Wolf 2004b)</span>. <span
+class="citation" data-cites="jagannathan2003risk">Jagannathan and Ma
+(2003)</span> showed that no-short-sale constraints act as an implicit
+shrinkage of extreme covariances, which explains why constrained
+sample-based minimum-variance portfolios perform respectably. This
+literature establishes that <em>how</em> the covariance is estimated
+matters; it says less about how the optimizer’s sensitivity to the
+remaining error depends on the structure of the true covariance.</p>
+<h4 id="hierarchical-portfolio-construction.">Hierarchical portfolio
+construction.</h4>
+<p>A parallel line, rooted in the observation that financial correlation
+matrices carry a hierarchical organization <span class="citation"
+data-cites="mantegna1999hierarchical">(Mantegna 1999)</span>, sidesteps
+matrix inversion altogether. Hierarchical Risk Parity <span
+class="citation" data-cites="lopezdeprado2016building">(López de Prado
+2016)</span> clusters assets with single-linkage agglomerative
+clustering on a correlation distance, quasi-diagonalizes the covariance,
+and allocates by recursive inverse-variance bisection. <span
+class="citation" data-cites="raffinot2017hierarchical">Raffinot
+(2017)</span> proposed hierarchical clustering-based allocation with
+alternative linkages and equal weighting across clusters, later extended
+to hierarchical equal risk contribution in a working paper <span
+class="citation" data-cites="raffinot2018herc">(Raffinot 2018)</span>.
+Further extensions incorporate tail-dependence-based distances in
+multi-asset multi-factor settings <span class="citation"
+data-cites="lohre2020hierarchical">(Lohre et al. 2020)</span>,
+constraints and a continuum between cluster-level and asset-level
+allocation <span class="citation"
+data-cites="pfitzinger2019constrained">(Pfitzinger and Katzke 2019, a
+working paper)</span>, and Monte-Carlo-based modifications for managed
+futures <span class="citation"
+data-cites="molyboga2020modified">(Molyboga 2020)</span>. <span
+class="citation" data-cites="jaeger2021interpretable">Jaeger et al.
+(2021)</span> use explainable-machine-learning tools to attribute when
+and why HRP-type strategies beat equal weight in block-bootstrapped
+multi-asset data. Most recently, <span class="citation"
+data-cites="cotton2024schur">Cotton (2024)</span> showed that HRP and
+minimum variance are endpoints of a single family of Schur-complement
+allocations, sharpening the question of where on that spectrum one
+should sit—a question whose answer must depend on estimation error.</p>
+<h4 id="the-gap.">The gap.</h4>
+<p>The original evidence for HRP consists of one numerical example and
+one Monte Carlo experiment with a particular block-diagonal-plus-shocks
+data-generating process, evaluated against unshrunk inverse-variance
+benchmarks <span class="citation"
+data-cites="lopezdeprado2016building">(López de Prado 2016)</span>.
+Follow-up studies are predominantly empirical backtests <span
+class="citation"
+data-cites="raffinot2017hierarchical lohre2020hierarchical jaeger2021interpretable">(Raffinot
+2017; Lohre et al. 2020; Jaeger et al. 2021)</span>, where the true
+covariance is unknown, so realized out-of-sample variance confounds
+estimation error with model misspecification and nonstationarity, and no
+oracle is available to measure either. Meanwhile, the <span
+class="math inline">1/N</span> literature <span class="citation"
+data-cites="demiguel2009optimal">(DeMiguel et al. 2009)</span> and the
+shrinkage literature <span class="citation"
+data-cites="ledoit2004honey ledoit2004well">(Ledoit and Wolf 2004b,
+2004a)</span> each demonstrate their preferred remedy on their own
+testbeds, with no common ground truth. What is missing is a controlled
+comparison in which the true covariance is known by construction and
+varied systematically across structural families—strict factor models,
+genuinely hierarchical block structures, unstructured dense matrices,
+and equicorrelation—while the sample length <span
+class="math inline">T</span> and universe size <span
+class="math inline">N</span> are swept over the <span
+class="math inline">T/N</span> ratios that drive the DeMiguel-style
+break-even results. Against the known-covariance oracle, the excess
+realized risk of each portfolio rule decomposes cleanly into a
+specification term (what the rule would lose even with perfect inputs,
+relevant for HRP and <span class="math inline">1/N</span>, which are not
+oracle-optimal) and an estimation term (what it loses to sampling
+noise). To our knowledge no published study reports this decomposition
+for HRP against sample and Ledoit–Wolf-shrunk minimum variance, inverse
+variance, and <span class="math inline">1/N</span> across structures and
+<span class="math inline">T/N</span> regimes, nor does any
+systematically examine HRP’s sensitivity to the linkage rule, despite
+the well-documented chaining behavior of single linkage <span
+class="citation" data-cites="murtagh2012algorithms">(Murtagh and
+Contreras 2012)</span> and Raffinot’s evidence that linkage choice
+materially changes hierarchical allocations <span class="citation"
+data-cites="raffinot2017hierarchical">(Raffinot 2017)</span>. This paper
+fills that gap.</p>
+<h1 id="sec:allocators">Allocators</h1>
+<p>Every allocator maps an estimation window <span
+class="math inline">R\in\mathbb{R}^{T\times N}</span> (or the sample
+covariance built from it) to full-investment weights, <span
+class="math inline">\sum_i w_i = 1</span>; all are scored on the true
+<span class="math inline">\Sigma</span>. The risk-only track contains
+ten methods that never see a mean estimate.</p>
+<h4 id="equal-weight-ew.">Equal weight (EW).</h4>
+<p><span class="math inline">w_i = 1/N</span>, the <span
+class="citation" data-cites="demiguel2009optimal">DeMiguel et al.
+(2009)</span> benchmark.</p>
+<h4 id="inverse-variance-iv.">Inverse variance (IV).</h4>
+<p><span class="math inline">w_i \propto 1/\widehat{\Sigma}_{ii}</span>,
+the diagonal-only allocator. It is the degenerate HRP that ignores all
+correlation information, and therefore the cleanest control for how much
+HRP’s clustering machinery adds.</p>
+<h4 id="sample-minimum-variance-mv.">Sample minimum variance (MV).</h4>
+<p>The closed-form unconstrained minimizer of <span
+class="math inline">w^{\top}\widehat{\Sigma}w</span> subject to <span
+class="math inline">\mathbf{1}^{\top}w=1</span>, <span
+class="math display">\begin{equation}
+w_{\mathrm{MV}} \;=\; \frac{\widehat{\Sigma}^{+}\mathbf{1}}
+{\mathbf{1}^{\top}\widehat{\Sigma}^{+}\mathbf{1}},
+\label{eq:minvar}
+\end{equation}</span> shorts allowed, with <span
+class="math inline">\widehat{\Sigma}</span> the sample covariance (<span
+class="smallcaps">ddof</span>=1). When <span class="math inline">T\le
+N</span> the sample covariance is singular; we use the Moore–Penrose
+pseudoinverse (the minimum-norm solution) and flag the record as
+rank-deficient rather than failing, since this is exactly the regime in
+which the HRP debate lives. The pseudoinverse truncates at NumPy’s
+default relative cutoff (<span
+class="math inline">\texttt{rcond}=10^{-15}</span>); the <span
+class="math inline">16.8\times</span> headline of Section <a
+href="#sec:starved" data-reference-type="ref"
+data-reference="sec:starved">6.1</a> is insensitive to this choice:
+replaying every <span class="math inline">T/N=1</span> experiment with
+cutoffs <span
+class="math inline">10^{-15}/10^{-10}/10^{-6}/10^{-3}</span> gives
+pooled medians <span class="math inline">16.82/16.82/15.61/3.98</span>,
+so only an absurdly aggressive cutoff—itself a crude regularizer—changes
+the picture.</p>
+<h4 id="long-only-clip-mv-lo.">Long-only clip (MV-LO).</h4>
+<p>Negative weights clipped to zero, then renormalized. This is
+deliberately the crude practitioner heuristic, not the long-only
+quadratic program: it is what naive implementations do, and the
+implicit-shrinkage result of <span class="citation"
+data-cites="jagannathan2003risk">Jagannathan and Ma (2003)</span>
+suggests even this crude projection should help.</p>
+<h4 id="ledoitwolf-minimum-variance-lw-lw-lo.">Ledoit–Wolf minimum
+variance (LW, LW-LO).</h4>
+<p>Equation <a href="#eq:minvar" data-reference-type="eqref"
+data-reference="eq:minvar">[eq:minvar]</a> applied to the shrinkage
+estimator of <span class="citation" data-cites="ledoit2004well">Ledoit
+and Wolf (2004a)</span>, <span class="math display">\begin{equation}
+\widehat{\Sigma}_{\mathrm{LW}} \;=\;
+(1-\delta)\,\widehat{\Sigma}_{\mathrm{MLE}}
+\;+\;
+\delta\,\frac{\operatorname{tr}\widehat{\Sigma}_{\mathrm{MLE}}}{N}\,I,
+\label{eq:lw}
+\end{equation}</span> with the analytically optimal intensity <span
+class="math inline">\delta</span> as computed by scikit-learn. The
+shrunk matrix is always well-conditioned, so LW is exactly as
+inversion-proof as HRP. LW-LO applies the same clip as MV-LO. In our
+experiments the fitted intensity behaves as theory predicts, with a
+median <span class="math inline">\delta</span> of <span
+class="math inline">0.42</span> at <span
+class="math inline">T/N=0.5</span> declining to <span
+class="math inline">0.04</span> at <span
+class="math inline">T/N=10</span>.</p>
+<h4 id="hierarchical-risk-parity-hrp.">Hierarchical Risk Parity
+(HRP).</h4>
+<p>Following <span class="citation"
+data-cites="lopezdeprado2016building">López de Prado (2016)</span>, in
+four steps. (1) From the sample correlation <span
+class="math inline">\hat{\rho}</span>, form the distance <span
+class="math inline">d_{ij}=\sqrt{(1-\hat{\rho}_{ij})/2}\in[0,1]</span>.
+(2) Run agglomerative clustering; the original prescribes
+<em>single</em> linkage. Two conventions for the clustered distance
+coexist: our main implementation links directly on the pairwise
+distances <span class="math inline">d</span> (a convention common among
+library implementations), whereas the original code listing passes the
+<em>square matrix</em> of <span class="math inline">d</span> to the
+clustering routine, which therefore links on the Euclidean
+distance-of-distances <span class="math inline">\tilde{d}_{ij}=\lVert
+d_{\cdot i}-d_{\cdot j}\rVert_2</span>. We run both; the stored <span
+class="math inline">\tilde{d}</span> variant is the faithfulness check
+of Section <a href="#sec:linkage" data-reference-type="ref"
+data-reference="sec:linkage">6.5</a>, where the two conventions prove
+interchangeable in aggregate. (3) Quasi-diagonalize: reorder assets by
+the dendrogram leaf order, which places mutually correlated assets
+adjacently. (4) Recursive bisection: split the ordered list into
+contiguous halves <span class="math inline">L</span> and <span
+class="math inline">R</span> (the paper bisects the ordered list, not
+the dendrogram), compute each half’s variance under its
+inverse-variance-weighted sub-portfolio, <span
+class="math inline">\tilde{V}_{C}=w_{C}^{\top}\widehat{\Sigma}_{C}w_{C}</span>
+with <span
+class="math inline">w_{C}\propto\operatorname{diag}(\widehat{\Sigma}_{C})^{-1}</span>,
+and allocate the fraction <span class="math inline">\alpha = 1 -
+\tilde{V}_{L}/(\tilde{V}_{L}+\tilde{V}_{R})</span> to the left half;
+recurse until singletons. All weights are positive and sum to one by
+construction; no matrix is ever inverted. On the condensed-<span
+class="math inline">d</span> convention we run three linkage variants,
+<span class="smallcaps">single</span> (the original prescription), <span
+class="smallcaps">average</span>, and <span
+class="smallcaps">ward</span>—the last formally defined only for
+Euclidean distances, so we report it as a sensitivity variant, not as
+HRP.</p>
+<h4 id="noisy-mu-markowitz-mv-mu-mv-mu-lw.">Noisy-<span
+class="math inline">\mu</span> Markowitz (MV-<span
+class="math inline">\mu</span>, MV-<span
+class="math inline">\mu</span>-LW).</h4>
+<p>Recorded separately on the Sharpe track only: the tangency
+<em>direction</em> <span
+class="math inline">\widehat{\Sigma}^{+}\widehat{\mu}</span> (sample or
+LW covariance) with <span class="math inline">\widehat{\mu}</span> the
+sample mean vector. The Sharpe ratio is invariant to positive scaling,
+so the direction is evaluated unnormalized, and a wrong sign honestly
+shows up as a negative true Sharpe ratio.</p>
+<h1 id="sec:framework">Simulation framework</h1>
+<p>The design rests on one device: the true covariance is known, so
+estimation error—the entire argument for HRP—can be isolated and
+measured exactly. Each experiment draws a true correlation matrix <span
+class="math inline">C</span> from one of four families, true
+volatilities, and a true mean vector; hands every allocator a finite
+sample; and scores the resulting weights on the truth.</p>
+<h2 id="sec:families">Four true-correlation families</h2>
+<p>The families span the cases where HRP’s clustering prior is right,
+partially right, and wrong (Figure <a href="#fig:setup"
+data-reference-type="ref" data-reference="fig:setup">1</a>a–d).</p>
+<h4 id="one-factor-capm-like-weak-cluster-structure.">One-factor
+(CAPM-like; weak cluster structure).</h4>
+<p><span
+class="math inline">C=\beta\beta^{\top}+\operatorname{diag}(1-\beta^{2})</span>
+with <span class="math inline">\beta_i=\sqrt{R^{2}_i}</span> and
+per-asset factor variance shares <span
+class="math inline">R^{2}_i</span> drawn uniformly in <span
+class="math inline">[r^{2}-\Delta,\,r^{2}+\Delta]</span> (clipped to
+<span class="math inline">[0.01,0.90]</span>), where the level <span
+class="math inline">r^{2}</span> and dispersion <span
+class="math inline">\Delta</span> are sampled per Table <a
+href="#tab:ranges" data-reference-type="ref"
+data-reference="tab:ranges">1</a>.</p>
+<h4 id="nested-hierarchical-the-world-hrp-is-built-for.">Nested
+hierarchical (the world HRP is built for).</h4>
+<p>A global factor, <span class="math inline">B</span> block factors,
+and nested sub-block factors with variance shares <span
+class="math inline">g</span>, <span class="math inline">b</span>, <span
+class="math inline">s</span>: <span
+class="math display">\begin{equation}
+C \;=\; AA^{\top} + \operatorname{diag}(1-g_i-b_i-s_i),
+\end{equation}</span> where row <span class="math inline">i</span> of
+<span class="math inline">A</span> carries loadings <span
+class="math inline">\sqrt{g_i}</span>, <span
+class="math inline">\sqrt{b_i}</span>, <span
+class="math inline">\sqrt{s_i}</span> on its global, block, and
+sub-block factor. Expected correlations are <span
+class="math inline">{\approx}g</span> across blocks, <span
+class="math inline">{\approx}g+b</span> within a block, and <span
+class="math inline">{\approx}g+b+s</span> within a sub-block. The number
+of sub-clusters in a block is capped at <span
+class="math inline">\min(S,\lfloor n_b/2\rfloor)</span>, with <span
+class="math inline">S</span> the sampled sub-clusters-per-block count
+and <span class="math inline">n_b</span> the block size, so every
+sub-cluster contains at least two assets. Shares are jittered per asset,
+capped so idiosyncratic variance stays <span
+class="math inline">\ge0.10</span>, and—crucially for Section <a
+href="#sec:ivp" data-reference-type="ref"
+data-reference="sec:ivp">6.4</a>—each block’s and sub-block’s share is
+scaled by a per-cluster multiplier drawn from <span
+class="math inline">U(1-\texttt{block\_disp},\,1+\texttt{block\_disp})</span>:
+at <span class="math inline">\texttt{block\_disp}=0</span> all clusters
+are equally tight (inverse variance is then near-optimal by symmetry);
+at large values clusters differ strongly in tightness, which is exactly
+the asymmetry cluster-level allocation is meant to exploit. The asset
+order is randomly permuted so no method can read the structure off the
+input ordering (Figure <a href="#fig:setup" data-reference-type="ref"
+data-reference="fig:setup">1</a>f).</p>
+<h4 id="unstructured-nothing-for-the-dendrogram-to-find.">Unstructured
+(nothing for the dendrogram to find).</h4>
+<p>A normalized Wishart draw: <span
+class="math inline">C=\operatorname{corr}(X^{\top}X)</span> with <span
+class="math inline">X\in\mathbb{R}^{m\times N}</span> i.i.d. standard
+normal and <span
+class="math inline">m=\max(N+2,\,\texttt{round}(\texttt{wishart\_dof\_ratio}\cdot
+N))</span>, almost surely full rank; lower ratios give wilder random
+correlations.</p>
+<h4 id="equicorrelation-structure-with-no-hierarchy.">Equicorrelation
+(structure with no hierarchy).</h4>
+<p><span
+class="math inline">C=(1-\rho)I+\rho\,\mathbf{1}\mathbf{1}^{\top}</span>
+with <span class="math inline">\rho\sim U(0.05,0.70)</span>, positive
+definite for <span class="math inline">\rho&gt;-1/(N-1)</span>.</p>
+<h2 id="sec:ranges">Sampling design: every knob disclosed</h2>
+<p>Every scalar that influences the generated truth is either a sampled
+field of the experiment configuration, drawn from the explicit ranges in
+Table <a href="#tab:ranges" data-reference-type="ref"
+data-reference="tab:ranges">1</a> and stored in every output record, or
+an asset-level draw made from the experiment RNG whose realized summary
+(mean off-diagonal correlation, volatility spread, minimum eigenvalue)
+is recorded per experiment. There are no other knobs. Universe size is
+drawn from <span class="math inline">N\in\{10,30,50,100\}</span> and the
+window length is <span class="math inline">T=\max(5,
+\texttt{round}(T/N\cdot N))</span> with <span
+class="math inline">T/N\in\{0.5,1,2,5,10\}</span>—the key axis. True
+volatilities are log-uniform, <span
+class="math inline">\sigma_i=\texttt{vol\_lo}\cdot\texttt{vol\_ratio}^{U(0,1)}</span>,
+so <span class="math inline">\Sigma=DCD</span> with <span
+class="math inline">D=\operatorname{diag}(\sigma)</span>; the true mean
+is <span class="math inline">\mu_i=s_i\sigma_i</span> with per-asset
+Sharpe <span
+class="math inline">s_i\sim\mathcal{N}(\texttt{sharpe\_mean},\texttt{sharpe\_disp}^2)</span>,
+giving the Sharpe track of Section <a href="#sec:mu"
+data-reference-type="ref" data-reference="sec:mu">6.6</a> a meaningful
+oracle.</p>
+<div id="tab:ranges">
+<table>
+<caption>The complete sampling design. Each experiment draws one
+configuration; every sampled value is stored in the per-experiment
+record. Ranges <span class="math inline">(a,b)</span> denote <span
+class="math inline">U(a,b)</span>; braces denote uniform
+choice.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Parameter</th>
+<th style="text-align: left;">Range / choices</th>
+<th style="text-align: left;">Applies to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><span class="math inline">N</span>
+(assets)</td>
+<td style="text-align: left;"><span class="math inline">\{10, 30, 50,
+100\}</span></td>
+<td style="text-align: left;">all</td>
+</tr>
+<tr>
+<td style="text-align: left;"><span class="math inline">T/N</span>
+(window/universe)</td>
+<td style="text-align: left;"><span class="math inline">\{0.5, 1, 2, 5,
+10\}</span>, <span class="math inline">T=\max(5,\texttt{round}(T/N\cdot
+N))</span></td>
+<td style="text-align: left;">all</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>vol_lo</code> (lowest
+vol/period)</td>
+<td style="text-align: left;"><span class="math inline">(0.005,
+0.02)</span></td>
+<td style="text-align: left;">all</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>vol_ratio</code> (<span
+class="math inline">\sigma_{\max}/\sigma_{\min}</span>)</td>
+<td style="text-align: left;"><span class="math inline">(1.5,
+6.0)</span></td>
+<td style="text-align: left;">all</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>sharpe_mean</code> (per period)</td>
+<td style="text-align: left;"><span class="math inline">(0.0,
+0.10)</span></td>
+<td style="text-align: left;">all</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>sharpe_disp</code></td>
+<td style="text-align: left;"><span class="math inline">(0.0,
+0.05)</span></td>
+<td style="text-align: left;">all</td>
+</tr>
+<tr>
+<td style="text-align: left;"><span
+class="math inline">t</span>-dof</td>
+<td style="text-align: left;"><span class="math inline">(4.0,
+10.0)</span></td>
+<td style="text-align: left;">Student-<span class="math inline">t</span>
+batch</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>factor_r2</code> (<span
+class="math inline">r^2</span>)</td>
+<td style="text-align: left;"><span class="math inline">(0.10,
+0.70)</span></td>
+<td style="text-align: left;">one-factor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>factor_r2_disp</code> (<span
+class="math inline">\Delta</span>)</td>
+<td style="text-align: left;"><span class="math inline">(0.0,
+0.15)</span></td>
+<td style="text-align: left;">one-factor</td>
+</tr>
+<tr>
+<td style="text-align: left;"><span class="math inline">B</span>
+(blocks)</td>
+<td style="text-align: left;"><span
+class="math inline">\{2,3,4,5\}</span> (s.t. <span class="math inline">B
+\le N/4</span>)</td>
+<td style="text-align: left;">hierarchical</td>
+</tr>
+<tr>
+<td style="text-align: left;">sub-clusters per block</td>
+<td style="text-align: left;"><span
+class="math inline">\{1,2,3\}</span></td>
+<td style="text-align: left;">hierarchical</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>global_share</code> (<span
+class="math inline">g</span>)</td>
+<td style="text-align: left;"><span class="math inline">(0.05,
+0.30)</span></td>
+<td style="text-align: left;">hierarchical</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>block_share</code> (<span
+class="math inline">b</span>)</td>
+<td style="text-align: left;"><span class="math inline">(0.10,
+0.40)</span></td>
+<td style="text-align: left;">hierarchical</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>sub_share</code> (<span
+class="math inline">s</span>)</td>
+<td style="text-align: left;"><span class="math inline">(0.00,
+0.30)</span></td>
+<td style="text-align: left;">hierarchical</td>
+</tr>
+<tr>
+<td style="text-align: left;">total-share cap</td>
+<td style="text-align: left;"><span class="math inline">0.90</span>
+(idiosyncratic <span class="math inline">\ge 0.10</span>)</td>
+<td style="text-align: left;">hierarchical</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>loading_jitter</code></td>
+<td style="text-align: left;"><span class="math inline">(0.0,
+0.30)</span></td>
+<td style="text-align: left;">hierarchical</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>block_disp</code></td>
+<td style="text-align: left;"><span class="math inline">(0.0,
+0.8)</span></td>
+<td style="text-align: left;">hierarchical</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>wishart_dof_ratio</code></td>
+<td style="text-align: left;"><span class="math inline">(1.2,
+5.0)</span>, <span
+class="math inline">m=\max(N{+}2,\texttt{round}(\cdot\,N))</span></td>
+<td style="text-align: left;">unstructured</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>equi_rho</code> (<span
+class="math inline">\rho</span>)</td>
+<td style="text-align: left;"><span class="math inline">(0.05,
+0.70)</span></td>
+<td style="text-align: left;">equicorrelation</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="sec:eval">Return sampling and exact evaluation</h2>
+<p>The main batch draws <span class="math inline">T</span>
+i.i.d. Gaussian observations <span
+class="math inline">r_t\sim\mathcal{N}(\mu,\Sigma)</span>. The
+robustness batch draws a multivariate Student-<span
+class="math inline">t</span> with <span class="math inline">\nu\sim
+U(4,10)</span> degrees of freedom—a common chi-square mixing variable
+across the cross-section, rescaled by <span
+class="math inline">\sqrt{(\nu-2)/\nu}</span> so the population
+covariance is exactly <span class="math inline">\Sigma</span>: the same
+truth, fatter joint tails. Each experiment draws <em>two</em>
+independent windows from the same truth; the second is used only to
+measure estimation-noise turnover, <span
+class="math inline">\tfrac12\lVert w^{(1)}-w^{(2)}\rVert_1</span>, the
+weight movement caused by resampling the data with the truth fixed.</p>
+<p>Evaluation is exact. The oracle is the unconstrained minimum-variance
+portfolio on the true covariance, <span
+class="math inline">w^{\star}=\Sigma^{-1}\mathbf{1}/(\mathbf{1}^{\top}\Sigma^{-1}\mathbf{1})</span>,
+the exact lower bound on realized variance over all full-investment
+weight vectors, so the headline metric <span
+class="math display">\begin{equation}
+\text{risk ratio}(w) \;=\;
+\frac{w^{\top}\Sigma w}{{w^{\star}}^{\top}\Sigma\, w^{\star}} \;\ge\; 1
+\label{eq:riskratio}
+\end{equation}</span> holds by construction. On the Sharpe track each
+portfolio’s true Sharpe ratio <span
+class="math inline">w^{\top}\mu/\sqrt{w^{\top}\Sigma w}</span> is
+reported as a fraction of the oracle tangency ceiling <span
+class="math inline">\sqrt{\mu^{\top}\Sigma^{-1}\mu}</span>. Because
+long-only rules (EW, IV, HRP, the clipped variants) are not
+oracle-optimal even with perfect inputs, their risk ratio contains a
+specification term in addition to estimation error; the large-<span
+class="math inline">T</span> limit of Section <a href="#sec:rich"
+data-reference-type="ref" data-reference="sec:rich">6.2</a> reveals
+it.</p>
+<figure id="fig:setup" data-latex-placement="t">
+<img src="/figures/fig_setup.svg" />
+<figcaption>The ground truth and HRP’s view of it. (a–d) True
+correlation matrices from the four families (illustrative fixed
+configurations, <span class="math inline">N=30</span>): one-factor,
+nested hierarchical (three blocks, two sub-clusters each; panel (b)
+shows it in its natural block order), unstructured normalized-Wishart,
+and equicorrelation. (e) Single-linkage dendrogram on the correlation
+distance <span class="math inline">d_{ij}=\sqrt{(1-\rho_{ij})/2}</span>
+of the hierarchical truth. (f) The same hierarchical correlation matrix
+in the randomly permuted asset order the allocators actually see.
+(g) The matrix reordered by the dendrogram leaf order: HRP’s
+quasi-diagonalization recovers the block structure.</figcaption>
+</figure>
+<h1 id="sec:setup">Experimental setup</h1>
+<p>We run <span class="math inline">4{,}800</span> experiments: <span
+class="math inline">4{,}000</span> Gaussian (seed <span
+class="math inline">101</span>) and <span class="math inline">800</span>
+Student-<span class="math inline">t</span> (seed <span
+class="math inline">707</span>), each drawing its family uniformly at
+random—the Gaussian batch lands <span class="math inline">1{,}007</span>
+one-factor, <span class="math inline">1{,}018</span> hierarchical, <span
+class="math inline">1{,}011</span> unstructured, and <span
+class="math inline">964</span> equicorrelation experiments, with <span
+class="math inline">179</span>–<span class="math inline">222</span>
+Gaussian experiments per family <span
+class="math inline">\times</span> <span class="math inline">T/N</span>
+cell. Each experiment runs all ten risk-track allocators and both
+noisy-<span class="math inline">\mu</span> directions on the same
+window. All results below are stratified by family and <span
+class="math inline">T/N</span>; we never let an aggregate hide a family
+reversal, and aggregates are quoted only when the direction agrees
+across families. Runs are deterministic given the released seeds (Python
+3.14.4, NumPy 2.4.6, SciPy 1.17.1, pandas 3.0.3, scikit-learn 1.9.0);
+the full per-experiment records (<span
+class="math inline">4{,}800\times86</span> fields, including every
+sampled configuration value) ship with the code.</p>
+<h1 id="sec:results">Results</h1>
+<figure id="fig:risk_vs_tn" data-latex-placement="t">
+<img src="/figures/fig_risk_vs_tn.svg" />
+<figcaption>Median realized risk relative to the oracle (Eq. <a
+href="#eq:riskratio" data-reference-type="ref"
+data-reference="eq:riskratio">[eq:riskratio]</a>, log–log axes) versus
+<span class="math inline">T/N</span>, per true-structure family (<span
+class="math inline">179</span>–<span class="math inline">222</span>
+Gaussian experiments per point). Six of the ten risk-track methods are
+shown; average/ward/<span class="math inline">\tilde{d}</span> HRP and
+LW-LO are omitted for legibility and sit on top of their siblings
+(Sections <a href="#sec:linkage" data-reference-type="ref"
+data-reference="sec:linkage">6.5</a> and <a href="#sec:starved"
+data-reference-type="ref" data-reference="sec:starved">6.1</a>). Sample
+minimum variance is catastrophic at <span class="math inline">T\approx
+N</span> and best-in-class by <span class="math inline">T/N\ge5</span>;
+Ledoit–Wolf tracks or beats HRP everywhere except the unstructured
+family at <span class="math inline">T/N\le1</span>; HRP and inverse
+variance flatten out at a family-dependent plateau instead of converging
+to the oracle line at <span class="math inline">1</span>.</figcaption>
+</figure>
+<div id="tab:headline">
+<table>
+<caption>Median realized risk / oracle (Eq. <a href="#eq:riskratio"
+data-reference-type="ref"
+data-reference="eq:riskratio">[eq:riskratio]</a>) by method and
+true-structure family, at the singular point <span
+class="math inline">T/N=1</span> and in the data-rich regime <span
+class="math inline">T/N=10</span> (Gaussian batch; <span
+class="math inline">180</span>–<span class="math inline">212</span>
+experiments per cell). Bold marks each column’s best method.</caption>
+<thead>
+<tr>
+<th style="text-align: left;"></th>
+<th colspan="4" style="text-align: center;"><span
+class="math inline">T/N=1</span> (singular)</th>
+<th colspan="4" style="text-align: center;"><span
+class="math inline">T/N=10</span> (data-rich)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><span>2-5</span>(lr)<span>6-9</span>
+Method</td>
+<td style="text-align: center;">1-fac.</td>
+<td style="text-align: center;">hier.</td>
+<td style="text-align: center;">unstr.</td>
+<td style="text-align: center;">equi.</td>
+<td style="text-align: center;">1-fac.</td>
+<td style="text-align: center;">hier.</td>
+<td style="text-align: center;">unstr.</td>
+<td style="text-align: center;">equi.</td>
+</tr>
+<tr>
+<td style="text-align: left;">EW (<span
+class="math inline">1/N</span>)</td>
+<td style="text-align: center;">5.65</td>
+<td style="text-align: center;">4.44</td>
+<td style="text-align: center;">2.60</td>
+<td style="text-align: center;">4.24</td>
+<td style="text-align: center;">5.18</td>
+<td style="text-align: center;">5.71</td>
+<td style="text-align: center;">2.54</td>
+<td style="text-align: center;">4.02</td>
+</tr>
+<tr>
+<td style="text-align: left;">IV</td>
+<td style="text-align: center;">3.25</td>
+<td style="text-align: center;">2.68</td>
+<td style="text-align: center;"><strong>1.54</strong></td>
+<td style="text-align: center;">2.29</td>
+<td style="text-align: center;">3.24</td>
+<td style="text-align: center;">3.13</td>
+<td style="text-align: center;">1.42</td>
+<td style="text-align: center;">2.41</td>
+</tr>
+<tr>
+<td style="text-align: left;">MV (sample)</td>
+<td style="text-align: center;">16.45</td>
+<td style="text-align: center;">16.15</td>
+<td style="text-align: center;">20.00</td>
+<td style="text-align: center;">16.35</td>
+<td style="text-align: center;">1.11</td>
+<td style="text-align: center;">1.10</td>
+<td style="text-align: center;"><strong>1.11</strong></td>
+<td style="text-align: center;">1.10</td>
+</tr>
+<tr>
+<td style="text-align: left;">MV-LO (clip)</td>
+<td style="text-align: center;">3.78</td>
+<td style="text-align: center;">3.43</td>
+<td style="text-align: center;">3.19</td>
+<td style="text-align: center;">2.82</td>
+<td style="text-align: center;">2.17</td>
+<td style="text-align: center;">2.18</td>
+<td style="text-align: center;">1.13</td>
+<td style="text-align: center;">1.66</td>
+</tr>
+<tr>
+<td style="text-align: left;">LW</td>
+<td style="text-align: center;"><strong>1.80</strong></td>
+<td style="text-align: center;"><strong>1.84</strong></td>
+<td style="text-align: center;">1.85</td>
+<td style="text-align: center;"><strong>1.74</strong></td>
+<td style="text-align: center;"><strong>1.09</strong></td>
+<td style="text-align: center;"><strong>1.10</strong></td>
+<td style="text-align: center;">1.14</td>
+<td style="text-align: center;"><strong>1.09</strong></td>
+</tr>
+<tr>
+<td style="text-align: left;">LW-LO (clip)</td>
+<td style="text-align: center;">2.88</td>
+<td style="text-align: center;">2.59</td>
+<td style="text-align: center;">1.85</td>
+<td style="text-align: center;">2.31</td>
+<td style="text-align: center;">2.20</td>
+<td style="text-align: center;">2.24</td>
+<td style="text-align: center;">1.15</td>
+<td style="text-align: center;">1.74</td>
+</tr>
+<tr>
+<td style="text-align: left;">HRP (single)</td>
+<td style="text-align: center;">3.24</td>
+<td style="text-align: center;">2.75</td>
+<td style="text-align: center;">1.67</td>
+<td style="text-align: center;">2.28</td>
+<td style="text-align: center;">3.20</td>
+<td style="text-align: center;">3.14</td>
+<td style="text-align: center;">1.40</td>
+<td style="text-align: center;">2.38</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="sec:starved">Data-starved regime: the insurance value is
+real</h2>
+<p>At <span class="math inline">T/N\le1</span> the sample covariance is
+singular (<span class="math inline">T-1&lt;N</span> in every such
+experiment), and Eq. <a href="#eq:minvar" data-reference-type="eqref"
+data-reference="eq:minvar">[eq:minvar]</a> on the pseudoinverse is a
+disaster: pooled across families, sample MV realizes a median <span
+class="math inline">16.8\times</span> the oracle risk at <span
+class="math inline">T/N=1</span>, exceeds <span
+class="math inline">10\times</span> in <span
+class="math inline">65\%</span> of <span
+class="math inline">T/N=1</span> experiments and <span
+class="math inline">100\times</span> in <span
+class="math inline">9\%</span> of them. HRP realizes a median <span
+class="math inline">2.3\times</span> at the same point, equal weight
+<span class="math inline">3.8\times</span>, inverse variance <span
+class="math inline">2.2\times</span> (Table <a href="#tab:headline"
+data-reference-type="ref" data-reference="tab:headline">2</a>, left
+panel). HRP beats sample MV in <span class="math inline">87\%</span> of
+all <span class="math inline">T/N\le1</span> experiments—in the
+unstructured family at <span class="math inline">T/N=0.5</span> it wins
+<span class="math inline">1.00</span> of them (<span
+class="math inline">201</span> of <span
+class="math inline">201</span>)—and it cannot suffer an inversion
+catastrophe: its weights are positive by construction, so its worst
+cases are those of any long-only rule facing an oracle that uses shorts
+(it exceeds <span class="math inline">10\times</span> the oracle in
+<span class="math inline">8.8\%</span> of <span
+class="math inline">T/N\le1</span> experiments, of the same order as
+EW’s <span class="math inline">19.9\%</span> and IV’s <span
+class="math inline">8.6\%</span>, against <span
+class="math inline">42.6\%</span> for sample MV). The practitioner
+folklore is, to this extent, confirmed and quantified.</p>
+<p>Two refinements. First, the catastrophe peaks at the singularity
+threshold <span class="math inline">T\approx N</span>, not at the
+smallest sample: at <span class="math inline">T/N=0.5</span> sample MV’s
+median is <span class="math inline">4.1</span>–<span
+class="math inline">10.4\times</span> by family, versus <span
+class="math inline">16.2</span>–<span
+class="math inline">20.0\times</span> at <span
+class="math inline">T/N=1</span>. With <span class="math inline">T\ll
+N</span> the pseudoinverse solves the problem in a much
+lower-dimensional range space, an implicit regularization; at <span
+class="math inline">T\approx N</span> the matrix is
+invertible-but-barely, its smallest eigenvalues nearly zero, and the
+optimizer amplifies them. Second, the crude long-only clip already buys
+back most of the insurance: MV-LO’s median at <span
+class="math inline">T/N=1</span> is <span
+class="math inline">2.8</span>–<span
+class="math inline">3.8\times</span>, consistent with the
+constraints-as-shrinkage result of <span class="citation"
+data-cites="jagannathan2003risk">Jagannathan and Ma (2003)</span>—though
+it is still beaten by HRP in <span class="math inline">85</span>–<span
+class="math inline">95\%</span> of <span
+class="math inline">T/N\le1</span> experiments per family (Table <a
+href="#tab:scorecard" data-reference-type="ref"
+data-reference="tab:scorecard">3</a>).</p>
+<h2 id="sec:rich">Data-rich regime: HRP does not converge</h2>
+<p>The right panel of Table <a href="#tab:headline"
+data-reference-type="ref" data-reference="tab:headline">2</a> shows the
+other side. By <span class="math inline">T/N=10</span>, sample MV and LW
+converge to <span class="math inline">{\approx}1.10\times</span> the
+oracle in every family (pooled medians <span
+class="math inline">1.10</span> for both), and the estimation penalty is
+visibly vanishing along the MV and LW curves of Figure <a
+href="#fig:risk_vs_tn" data-reference-type="ref"
+data-reference="fig:risk_vs_tn">2</a>. HRP’s curve is flat: <span
+class="math inline">3.20</span> (one-factor), <span
+class="math inline">3.14</span> (hierarchical), <span
+class="math inline">1.40</span> (unstructured), <span
+class="math inline">2.38</span> (equicorrelation) at <span
+class="math inline">T/N=10</span>—essentially its <span
+class="math inline">T/N=1</span> values. HRP is not a consistent
+estimator of the minimum-variance portfolio: more data does not help it,
+because its loss is dominated by a <em>specification</em> gap, not
+estimation error. The <span class="math inline">T/N=10</span> plateau is
+a direct estimate of that gap—what HRP would lose even given the true
+covariance—and it ranges from <span class="math inline">40\%</span>
+extra risk (unstructured) to <span class="math inline">220\%</span>
+(one-factor). The same plateau afflicts inverse variance and equal
+weight, which is the first hint of Section <a href="#sec:ivp"
+data-reference-type="ref" data-reference="sec:ivp">6.4</a>: HRP inherits
+its asymptotics from the inverse-variance rule inside it. Notably, even
+at <span class="math inline">T/N=10</span> the <em>clipped</em> variants
+do not converge either (MV-LO <span
+class="math inline">1.13</span>–<span class="math inline">2.18</span>):
+with an oracle that shorts, any long-only rule retains a specification
+gap; what distinguishes HRP is that it carries this gap while also being
+promoted as the remedy for estimation error.</p>
+<div id="tab:scorecard">
+<table>
+<caption>Where HRP wins: fraction of experiments in which HRP (single
+linkage) realizes strictly lower true risk than each opponent, by
+family, pooled over the data-starved band (<span
+class="math inline">T/N\le1</span>, <span
+class="math inline">n=378</span>–<span class="math inline">418</span>
+per family) and the data-rich band (<span
+class="math inline">T/N\ge5</span>, <span
+class="math inline">n=387</span>–<span class="math inline">423</span>).
+Gaussian batch.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Band</th>
+<th style="text-align: left;">Family</th>
+<th style="text-align: center;">vs EW</th>
+<th style="text-align: center;">vs IV</th>
+<th style="text-align: center;">vs MV</th>
+<th style="text-align: center;">vs MV-LO</th>
+<th style="text-align: center;">vs LW</th>
+<th style="text-align: center;">vs LW-LO</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><span
+class="math inline">T/N\le1</span></td>
+<td style="text-align: left;">one-factor</td>
+<td style="text-align: center;">0.97</td>
+<td style="text-align: center;">0.55</td>
+<td style="text-align: center;">0.79</td>
+<td style="text-align: center;">0.89</td>
+<td style="text-align: center;">0.23</td>
+<td style="text-align: center;">0.36</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">hierarchical</td>
+<td style="text-align: center;">0.95</td>
+<td style="text-align: center;">0.41</td>
+<td style="text-align: center;">0.86</td>
+<td style="text-align: center;">0.90</td>
+<td style="text-align: center;">0.28</td>
+<td style="text-align: center;">0.37</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">unstructured</td>
+<td style="text-align: center;">0.76</td>
+<td style="text-align: center;">0.16</td>
+<td style="text-align: center;">1.00</td>
+<td style="text-align: center;">0.95</td>
+<td style="text-align: center;">0.55</td>
+<td style="text-align: center;">0.55</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">equicorr.</td>
+<td style="text-align: center;">0.95</td>
+<td style="text-align: center;">0.37</td>
+<td style="text-align: center;">0.84</td>
+<td style="text-align: center;">0.85</td>
+<td style="text-align: center;">0.32</td>
+<td style="text-align: center;">0.38</td>
+</tr>
+<tr>
+<td style="text-align: left;"><span
+class="math inline">T/N\ge5</span></td>
+<td style="text-align: left;">one-factor</td>
+<td style="text-align: center;">1.00</td>
+<td style="text-align: center;">0.63</td>
+<td style="text-align: center;">0.07</td>
+<td style="text-align: center;">0.05</td>
+<td style="text-align: center;">0.04</td>
+<td style="text-align: center;">0.04</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">hierarchical</td>
+<td style="text-align: center;">1.00</td>
+<td style="text-align: center;">0.60</td>
+<td style="text-align: center;">0.04</td>
+<td style="text-align: center;">0.03</td>
+<td style="text-align: center;">0.01</td>
+<td style="text-align: center;">0.02</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">unstructured</td>
+<td style="text-align: center;">0.95</td>
+<td style="text-align: center;">0.58</td>
+<td style="text-align: center;">0.08</td>
+<td style="text-align: center;">0.06</td>
+<td style="text-align: center;">0.06</td>
+<td style="text-align: center;">0.06</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">equicorr.</td>
+<td style="text-align: center;">1.00</td>
+<td style="text-align: center;">0.46</td>
+<td style="text-align: center;">0.09</td>
+<td style="text-align: center;">0.05</td>
+<td style="text-align: center;">0.06</td>
+<td style="text-align: center;">0.06</td>
+</tr>
+</tbody>
+</table>
+</div>
+<figure id="fig:winrate" data-latex-placement="t">
+<img src="/figures/fig_winrate.svg" />
+<figcaption><span class="math inline">P(\text{HRP realized risk} &lt;
+\text{opponent&#39;s})</span> per family <span
+class="math inline">\times</span> <span class="math inline">T/N</span>
+cell (Gaussian batch, <span class="math inline">179</span>–<span
+class="math inline">222</span> experiments per cell; blue = HRP better,
+red = opponent better). HRP dominates equal weight everywhere and naive
+minimum variance (with or without the long-only clip) wherever <span
+class="math inline">T/N\le1</span>; against Ledoit–Wolf it is below
+<span class="math inline">0.5</span> in every cell of the one-factor,
+hierarchical, and equicorrelation families, with the unstructured
+small-<span class="math inline">T</span> corner (win rates <span
+class="math inline">0.54</span>–<span class="math inline">0.57</span>)
+the lone exception. Against inverse variance HRP hovers near <span
+class="math inline">0.5</span> except in the unstructured family at
+small <span class="math inline">T</span>, where the clustering machinery
+actively hurts (<span class="math inline">0.13</span>–<span
+class="math inline">0.29</span>).</figcaption>
+</figure>
+<h2 id="sec:shrinkage">The honest headline: shrinkage beats HRP almost
+everywhere</h2>
+<p>Table <a href="#tab:headline" data-reference-type="ref"
+data-reference="tab:headline">2</a> already shows it in medians;
+Table <a href="#tab:scorecard" data-reference-type="ref"
+data-reference="tab:scorecard">3</a> and Figure <a href="#fig:winrate"
+data-reference-type="ref" data-reference="fig:winrate">3</a> show it
+experiment by experiment. Ledoit–Wolf minimum variance—which fixes the
+same singularity HRP fixes, with one line of scikit-learn—realizes lower
+true risk than HRP at <em>every</em> <span
+class="math inline">T/N</span> in the one-factor, hierarchical, and
+equicorrelation families. Pooled across families, HRP’s win rate against
+LW is <span class="math inline">0.34</span> at <span
+class="math inline">T/N\le1</span> and falls to <span
+class="math inline">0.05</span> at <span
+class="math inline">T/N\ge5</span>. The single exception is the
+unstructured family at small <span class="math inline">T</span>: with
+nothing for the shrinkage target (or the dendrogram) to exploit, HRP
+edges LW with win rates of <span class="math inline">0.54</span> at
+<span class="math inline">T/N=0.5</span> and <span
+class="math inline">0.57</span> at <span
+class="math inline">T/N=1</span>, and a median paired log-ratio near
+zero (<span class="math inline">-0.02</span> dex at <span
+class="math inline">T/N=1</span>).<a href="#fn2" class="footnote-ref"
+id="fnref2" role="doc-noteref"><sup>2</sup></a> Even this exception
+deflates on inspection: in the same cells, plain inverse variance is
+better still (median <span class="math inline">1.54\times</span>
+vs. HRP’s <span class="math inline">1.67\times</span> at <span
+class="math inline">T/N=1</span>; HRP beats IV in only <span
+class="math inline">0.16</span> of unstructured <span
+class="math inline">T/N\le1</span> experiments). Where HRP beats
+shrinkage, it does so not because clustering helps but because
+<em>correlations are pure noise there and HRP mostly ignores
+them</em>—and the allocator that ignores them entirely wins.</p>
+<p>It is worth being precise about what HRP wins against, because the
+practitioner comparison is usually HRP versus naive Markowitz: against
+sample MV and the clipped MV-LO at <span
+class="math inline">T/N\le1</span>, HRP wins <span
+class="math inline">0.79</span>–<span class="math inline">1.00</span> of
+experiments per family. The insurance is real; it is the choice of
+comparator that flatters HRP. Against the equally inversion-proof LW,
+the picture inverts almost everywhere.</p>
+<h2 id="sec:ivp">HRP is mostly the inverse-variance portfolio inside
+it</h2>
+<p>Against diagonal inverse variance, HRP’s win rates hover near <span
+class="math inline">0.5</span> in most cells (Table <a
+href="#tab:scorecard" data-reference-type="ref"
+data-reference="tab:scorecard">3</a>, “vs IV”), and the median paired
+log-ratios are tiny (within <span class="math inline">\pm0.006</span>
+dex, i.e. <span class="math inline">\pm1.5\%</span> in risk, in every
+hierarchical-family cell). The pattern splits by band: with ample data
+HRP is modestly ahead of IV in three of four families (win rates <span
+class="math inline">0.46</span>–<span class="math inline">0.63</span> at
+<span class="math inline">T/N\ge5</span>), while in the data-starved
+band the clustering machinery earns its keep only where the truth has
+the specific asymmetry it is built to exploit. Our hierarchical
+generator makes that asymmetry an explicit, sampled parameter:
+<code>block_disp</code> scales each cluster’s variance share by <span
+class="math inline">U(1-d,1+d)</span>, so <span
+class="math inline">d=0</span> gives equally tight clusters (inverse
+variance near-optimal by symmetry) and large <span
+class="math inline">d</span> gives clusters of very different tightness.
+Within the hierarchical family at <span
+class="math inline">T/N\le2</span>, HRP’s win rate against IV rises
+monotonically across <code>block_disp</code> terciles: <span
+class="math inline">0.35</span> (mean <span
+class="math inline">d=0.13</span>), <span
+class="math inline">0.40</span> (mean <span
+class="math inline">d=0.38</span>), <span
+class="math inline">0.56</span> (mean <span
+class="math inline">d=0.66</span>). The median paired advantage remains
+small even in the top tercile (<span class="math inline">-0.002</span>
+dex, <span class="math inline">{\approx}0.4\%</span> less risk), so the
+dispersion effect is real but modest in magnitude—and note that against
+LW the same terciles read <span
+class="math inline">0.28/0.19/0.19</span>: cluster asymmetry helps HRP
+relative to its own diagonal core, not relative to shrinkage. In short:
+most of HRP’s behavior is the IVP; the dendrogram adds a
+structure-conditional refinement, not a transformation.</p>
+<h2 id="sec:linkage">Linkage does not matter (and turnover
+diagnostics)</h2>
+<p>Practitioner debate spends considerable energy on the linkage rule,
+citing single linkage’s chaining pathology <span class="citation"
+data-cites="murtagh2012algorithms">(Murtagh and Contreras 2012)</span>
+and preferring average or Ward variants <span class="citation"
+data-cites="raffinot2017hierarchical">(Raffinot 2017)</span>. On the
+minimum-variance criterion the choice is immaterial in our testbed: the
+median realized-risk ratios of single/average/ward HRP per family agree
+to <span class="math inline">2.95/2.93/3.00</span> (one-factor), <span
+class="math inline">3.04/3.06/3.04</span> (hierarchical), <span
+class="math inline">1.57/1.53/1.54</span> (unstructured), and <span
+class="math inline">2.42/2.42/2.39</span> (equicorrelation)—the three
+linkage medians agree to within <span
+class="math inline">0.02</span>–<span class="math inline">0.06</span>
+(Figure <a href="#fig:sensitivity" data-reference-type="ref"
+data-reference="fig:sensitivity">4</a>a), a disagreement one to two
+orders of magnitude smaller than the gaps between allocator families in
+Table <a href="#tab:headline" data-reference-type="ref"
+data-reference="tab:headline">2</a>. No linkage is best in more than two
+families, and which one “wins” flips across families. Anyone tuning HRP
+should tune <em>whether</em> to cluster, not <em>how</em> to link.</p>
+<p>The distance-matrix convention matters just as little, which doubles
+as a faithfulness check on our implementation (Section <a
+href="#sec:allocators" data-reference-type="ref"
+data-reference="sec:allocators">3</a>): recomputing single-linkage HRP
+with the linkage on the Euclidean distance-of-distances <span
+class="math inline">\tilde{d}</span>—the matrix the original code
+listing hands to the clustering routine—moves the per-family median risk
+ratio by at most <span class="math inline">0.02</span> (<span
+class="math inline">2.95\to2.94</span> one-factor, <span
+class="math inline">3.04\to3.05</span> hierarchical, <span
+class="math inline">1.57\to1.58</span> unstructured, <span
+class="math inline">2.42\to2.44</span> equicorrelation), with a paired
+median log-ratio of exactly zero and a <span
+class="math inline">\tilde{d}</span> win rate of <span
+class="math inline">0.44</span>–<span class="math inline">0.48</span>
+per family. The per-experiment weights genuinely differ—the two
+conventions realize bit-identical risk in only <span
+class="math inline">4</span>–<span class="math inline">9\%</span> of
+experiments—but no aggregate conclusion in this paper changes under
+either convention.</p>
+<p>The same figure reports two operational diagnostics. Concentration
+(Figure <a href="#fig:sensitivity" data-reference-type="ref"
+data-reference="fig:sensitivity">4</a>b): all methods are diffuse in
+median terms (gross-weight Herfindahl <span
+class="math inline">0.02</span>–<span class="math inline">0.08</span>),
+with HRP (<span class="math inline">{\approx}0.04</span>) close to IV
+and LW; the optimizers are not visibly more concentrated in the
+median—their pathology is instability, not static concentration, and
+sample MV holds a median gross short position of <span
+class="math inline">0.57</span> versus <span
+class="math inline">0.25</span> for LW. Estimation-noise turnover
+(Figure <a href="#fig:sensitivity" data-reference-type="ref"
+data-reference="fig:sensitivity">4</a>c) makes the instability explicit:
+redrawing the estimation window from the same truth moves sample MV’s
+weights by a median half-<span class="math inline">L_1</span> distance
+of <span class="math inline">4.43</span> at <span
+class="math inline">T/N=1</span>—more than four times the entire
+book—versus <span class="math inline">0.52</span> for LW, <span
+class="math inline">0.22</span> for HRP, and <span
+class="math inline">0.12</span> for IV. HRP’s practical appeal of low,
+stable turnover is genuine; it is inherited from the near-diagonal
+allocation, and LW pays roughly twice HRP’s turnover for its risk
+advantage.</p>
+<figure id="fig:sensitivity" data-latex-placement="t">
+<img src="/figures/fig_sensitivity.svg" />
+<figcaption>(a) Linkage sensitivity: median realized risk / oracle for
+single/average/ward HRP, by family (all <span
+class="math inline">T/N</span> pooled); the spread within each family is
+<span class="math inline">0.02</span>–<span
+class="math inline">0.06</span>. (b) Median concentration (Herfindahl
+index of <span class="math inline">|w|/\lVert w\rVert_1</span>) by
+method and family: every method is diffuse in the median; EW’s <span
+class="math inline">1/N</span> differs across families only through
+their <span class="math inline">N</span> mixes. (c) Estimation-noise
+turnover: median <span class="math inline">\tfrac12\lVert
+w^{(1)}-w^{(2)}\rVert_1</span> between two independent windows drawn
+from the same truth, by <span class="math inline">T/N</span> (all
+families pooled). Sample minimum variance peaks at <span
+class="math inline">4.43</span> at the singularity threshold <span
+class="math inline">T/N=1</span>; HRP stays at <span
+class="math inline">0.11</span>–<span class="math inline">0.30</span>,
+below Ledoit–Wolf throughout.</figcaption>
+</figure>
+<h2 id="sec:mu">Estimated means are the real catastrophe</h2>
+<p>Everything above concerns risk-only allocators, which is where the
+HRP-versus-shrinkage debate lives. For perspective, the same harness
+runs the classical Markowitz tangency direction with <em>estimated</em>
+means, <span
+class="math inline">\widehat{\Sigma}^{+}\widehat{\mu}</span>, and scores
+its true Sharpe ratio against the oracle tangency ceiling <span
+class="math inline">\sqrt{\mu^{\top}\Sigma^{-1}\mu}</span> (Table <a
+href="#tab:sharpe" data-reference-type="ref"
+data-reference="tab:sharpe">4</a>). At <span
+class="math inline">T/N\le1</span> the noisy-<span
+class="math inline">\mu</span> direction captures a median <span
+class="math inline">8</span>–<span class="math inline">11\%</span> of
+the attainable Sharpe ratio by family (pooled <span
+class="math inline">10\%</span>), and its true Sharpe ratio is
+<em>negative</em>—the estimated direction points the wrong way—in <span
+class="math inline">28\%</span> of experiments. Shrinking the covariance
+inside the tangency formula helps (<span
+class="math inline">19</span>–<span class="math inline">22\%</span>
+captured) but does not rescue it; the failure is in <span
+class="math inline">\widehat{\mu}</span>, reproducing <span
+class="citation" data-cites="demiguel2009optimal">DeMiguel et al.
+(2009)</span> and the error-sensitivity hierarchy of <span
+class="citation" data-cites="chopra1993effect">Chopra and Ziemba
+(1993)</span> inside a fully controlled environment. By contrast, the
+three <span class="math inline">\mu</span>-free rules of Table <a
+href="#tab:sharpe" data-reference-type="ref"
+data-reference="tab:sharpe">4</a> capture <span
+class="math inline">26</span>–<span class="math inline">70\%</span> in
+the same regime, and even the weakest <span
+class="math inline">\mu</span>-free allocator on this track, sample
+minimum variance, captures a pooled median <span
+class="math inline">18\%</span> (per-family medians <span
+class="math inline">0.15</span>–<span
+class="math inline">0.25</span>)—nearly twice the noisy-<span
+class="math inline">\mu</span> direction. Even with ten observations per
+asset, noisy-<span class="math inline">\mu</span> tangency captures only
+<span class="math inline">48</span>–<span
+class="math inline">71\%</span> and is still negative in <span
+class="math inline">2</span>–<span class="math inline">6\%</span> of
+experiments.</p>
+<p>Two honest caveats from the same table. First, minimum variance is
+not the Sharpe-optimal objective: the <em>oracle</em> minimum-variance
+portfolio itself captures only <span
+class="math inline">0.20</span>–<span class="math inline">0.26</span> of
+the tangency Sharpe in the three structured families (it captures <span
+class="math inline">0.84</span>–<span class="math inline">0.85</span> in
+the unstructured family, where the tangency and minimum-variance
+portfolios nearly coincide under our mean model). Equal weight and HRP,
+whose Sharpe capture (<span class="math inline">0.34</span>–<span
+class="math inline">0.44</span> in structured families) <em>exceeds</em>
+the oracle minimum-variance floor’s, profit from a mean model in which
+all assets have similar expected Sharpe ratios—a regime that flatters
+diffuse portfolios on the Sharpe track, exactly as the <span
+class="math inline">1/N</span> literature would predict. Second, these
+Sharpe-track numbers therefore do not contradict the risk-track ranking;
+they answer a different question (“how much Sharpe, given this mean
+structure?” versus “how close to the minimum-variance floor?”).</p>
+<div id="tab:sharpe">
+<table>
+<caption>Sharpe track: median true Sharpe ratio as a fraction of the
+oracle tangency ceiling, by family and <span
+class="math inline">T/N</span> band (Gaussian batch). MV-<span
+class="math inline">\mu</span> and MV-<span
+class="math inline">\mu</span>-LW are tangency directions built from
+estimated means with the sample and Ledoit–Wolf covariance; “neg.” is
+the fraction of experiments with negative true Sharpe ratio for MV-<span
+class="math inline">\mu</span>; the last column is the <em>oracle</em>
+minimum-variance portfolio’s own capture (the ceiling for the risk-only
+rules under this mean model).</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Band</th>
+<th style="text-align: left;">Family</th>
+<th style="text-align: center;">EW</th>
+<th style="text-align: center;">LW</th>
+<th style="text-align: center;">HRP</th>
+<th style="text-align: center;">MV-<span
+class="math inline">\mu</span></th>
+<th style="text-align: center;">MV-<span
+class="math inline">\mu</span>-LW</th>
+<th style="text-align: center;">neg.</th>
+<th style="text-align: center;">or. MV</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><span
+class="math inline">T/N\le1</span></td>
+<td style="text-align: left;">one-factor</td>
+<td style="text-align: center;">0.37</td>
+<td style="text-align: center;">0.26</td>
+<td style="text-align: center;">0.36</td>
+<td style="text-align: center;">0.11</td>
+<td style="text-align: center;">0.22</td>
+<td style="text-align: center;">0.28</td>
+<td style="text-align: center;">0.20</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">hierarchical</td>
+<td style="text-align: center;">0.40</td>
+<td style="text-align: center;">0.30</td>
+<td style="text-align: center;">0.39</td>
+<td style="text-align: center;">0.10</td>
+<td style="text-align: center;">0.21</td>
+<td style="text-align: center;">0.29</td>
+<td style="text-align: center;">0.22</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">unstructured</td>
+<td style="text-align: center;">0.66</td>
+<td style="text-align: center;">0.70</td>
+<td style="text-align: center;">0.57</td>
+<td style="text-align: center;">0.11</td>
+<td style="text-align: center;">0.20</td>
+<td style="text-align: center;">0.23</td>
+<td style="text-align: center;">0.84</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">equicorr.</td>
+<td style="text-align: center;">0.40</td>
+<td style="text-align: center;">0.28</td>
+<td style="text-align: center;">0.39</td>
+<td style="text-align: center;">0.08</td>
+<td style="text-align: center;">0.19</td>
+<td style="text-align: center;">0.33</td>
+<td style="text-align: center;">0.23</td>
+</tr>
+<tr>
+<td style="text-align: left;"><span
+class="math inline">T/N\ge5</span></td>
+<td style="text-align: left;">one-factor</td>
+<td style="text-align: center;">0.34</td>
+<td style="text-align: center;">0.23</td>
+<td style="text-align: center;">0.36</td>
+<td style="text-align: center;">0.55</td>
+<td style="text-align: center;">0.56</td>
+<td style="text-align: center;">0.05</td>
+<td style="text-align: center;">0.24</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">hierarchical</td>
+<td style="text-align: center;">0.36</td>
+<td style="text-align: center;">0.21</td>
+<td style="text-align: center;">0.36</td>
+<td style="text-align: center;">0.56</td>
+<td style="text-align: center;">0.57</td>
+<td style="text-align: center;">0.06</td>
+<td style="text-align: center;">0.21</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">unstructured</td>
+<td style="text-align: center;">0.67</td>
+<td style="text-align: center;">0.82</td>
+<td style="text-align: center;">0.67</td>
+<td style="text-align: center;">0.71</td>
+<td style="text-align: center;">0.64</td>
+<td style="text-align: center;">0.02</td>
+<td style="text-align: center;">0.85</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">equicorr.</td>
+<td style="text-align: center;">0.44</td>
+<td style="text-align: center;">0.26</td>
+<td style="text-align: center;">0.44</td>
+<td style="text-align: center;">0.48</td>
+<td style="text-align: center;">0.50</td>
+<td style="text-align: center;">0.06</td>
+<td style="text-align: center;">0.26</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="sec:studentt">Student-<span class="math inline">t</span>
+robustness</h2>
+<p>The <span class="math inline">800</span>-experiment multivariate
+Student-<span class="math inline">t</span> batch (<span
+class="math inline">\nu\sim U(4,10)</span>, covariance rescaled to
+exactly <span class="math inline">\Sigma</span>) reproduces every
+qualitative ranking (Table <a href="#tab:studentt"
+data-reference-type="ref" data-reference="tab:studentt">5</a>). Fat
+joint tails make the inversion-based estimators a little worse in every
+family (sample MV by <span class="math inline">+0.04</span> to <span
+class="math inline">+0.25</span> in the median, LW by <span
+class="math inline">+0.02</span> to <span
+class="math inline">+0.11</span>); the diffuse rules move by up to <span
+class="math inline">1.1</span> in the noisier <span
+class="math inline">193</span>–<span
+class="math inline">205</span>-experiment <span
+class="math inline">t</span>-cells without changing sign or order
+anywhere. HRP’s win rate against LW by family is <span
+class="math inline">0.13</span>–<span class="math inline">0.38</span>
+under Student-<span class="math inline">t</span> versus <span
+class="math inline">0.14</span>–<span class="math inline">0.32</span>
+under Gaussian sampling, with the unstructured family again the most
+HRP-friendly and the one-factor family the least. Fatter tails do not
+reorder the comparison.</p>
+<div id="tab:studentt">
+<table>
+<caption>Gaussian vs. Student-<span class="math inline">t</span>
+sampling: median realized risk / oracle by family (all <span
+class="math inline">T/N</span> pooled; <span
+class="math inline">964</span>–<span class="math inline">1{,}018</span>
+Gaussian and <span class="math inline">193</span>–<span
+class="math inline">205</span> Student-<span
+class="math inline">t</span> experiments per family), and HRP’s win rate
+against Ledoit–Wolf in the same pool.</caption>
+<thead>
+<tr>
+<th style="text-align: left;">Returns</th>
+<th style="text-align: left;">Family</th>
+<th style="text-align: center;">EW</th>
+<th style="text-align: center;">MV</th>
+<th style="text-align: center;">LW</th>
+<th style="text-align: center;">HRP</th>
+<th style="text-align: center;">win HRP vs LW</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Gaussian</td>
+<td style="text-align: left;">one-factor</td>
+<td style="text-align: center;">5.24</td>
+<td style="text-align: center;">1.90</td>
+<td style="text-align: center;">1.41</td>
+<td style="text-align: center;">2.95</td>
+<td style="text-align: center;">0.14</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">hierarchical</td>
+<td style="text-align: center;">5.22</td>
+<td style="text-align: center;">1.97</td>
+<td style="text-align: center;">1.43</td>
+<td style="text-align: center;">3.04</td>
+<td style="text-align: center;">0.14</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">unstructured</td>
+<td style="text-align: center;">2.51</td>
+<td style="text-align: center;">1.88</td>
+<td style="text-align: center;">1.48</td>
+<td style="text-align: center;">1.57</td>
+<td style="text-align: center;">0.32</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">equicorr.</td>
+<td style="text-align: center;">4.14</td>
+<td style="text-align: center;">1.82</td>
+<td style="text-align: center;">1.34</td>
+<td style="text-align: center;">2.42</td>
+<td style="text-align: center;">0.19</td>
+</tr>
+<tr>
+<td style="text-align: left;">Student-<span
+class="math inline">t</span></td>
+<td style="text-align: left;">one-factor</td>
+<td style="text-align: center;">5.14</td>
+<td style="text-align: center;">2.05</td>
+<td style="text-align: center;">1.48</td>
+<td style="text-align: center;">3.19</td>
+<td style="text-align: center;">0.13</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">hierarchical</td>
+<td style="text-align: center;">4.16</td>
+<td style="text-align: center;">2.22</td>
+<td style="text-align: center;">1.47</td>
+<td style="text-align: center;">2.50</td>
+<td style="text-align: center;">0.18</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">unstructured</td>
+<td style="text-align: center;">2.48</td>
+<td style="text-align: center;">2.08</td>
+<td style="text-align: center;">1.60</td>
+<td style="text-align: center;">1.73</td>
+<td style="text-align: center;">0.38</td>
+</tr>
+<tr>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">equicorr.</td>
+<td style="text-align: center;">4.47</td>
+<td style="text-align: center;">1.86</td>
+<td style="text-align: center;">1.36</td>
+<td style="text-align: center;">2.65</td>
+<td style="text-align: center;">0.19</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h1 id="sec:discussion">Discussion</h1>
+<h4 id="when-should-one-actually-use-hrp">When should one actually use
+HRP?</h4>
+<p>Our results support a narrow but real use case: <em>covariance
+structure unknown or plausibly unstructured, and <span
+class="math inline">T\lesssim N</span></em>. There HRP matches
+Ledoit–Wolf (win <span class="math inline">{\approx}0.55</span>), never
+explodes, and turns over a twentieth as much as unconstrained sample MV
+(<span class="math inline">0.22</span> vs. <span
+class="math inline">4.43</span> at <span
+class="math inline">T/N=1</span>) and a third as much as the clipped
+variant. If one believes the truth is dense random correlation, plain
+inverse variance is better still; HRP is the hedge for not knowing. In
+every structured world we tested—one common factor, genuine nested
+hierarchy (the case HRP was designed for!), constant
+correlation—Ledoit–Wolf shrinkage realized less true risk at every <span
+class="math inline">T/N</span>, with win rates against HRP of <span
+class="math inline">0.63</span>–<span class="math inline">0.99</span>
+per cell. The deepest irony of the comparison is that HRP loses most
+clearly in the hierarchical family itself: knowing that the truth is
+hierarchical is covariance information, and the estimator that uses all
+of <span class="math inline">\widehat{\Sigma}</span> (gently shrunk)
+exploits it better than a greedy dendrogram that uses only the ordering
+it induces.</p>
+<h4 id="what-the-plateau-means.">What the plateau means.</h4>
+<p>Because the oracle is exact, the <span
+class="math inline">T/N\to10</span> limit cleanly separates the two
+failure modes that backtests confound. The optimizers’ excess risk is
+almost entirely estimation error (it vanishes: <span
+class="math inline">1.10\times</span> at <span
+class="math inline">T/N=10</span>); HRP’s is almost entirely
+specification error (it persists: <span
+class="math inline">1.40</span>–<span
+class="math inline">3.20\times</span>). The practical corollary: more
+history helps Markowitz-type rules and does essentially nothing for HRP,
+so the break-even <span class="math inline">T/N</span> between them is
+not a constant of nature but falls out of the data: HRP’s win rate
+against sample MV crosses <span class="math inline">0.5</span> between
+<span class="math inline">T/N=1</span> and <span
+class="math inline">2</span> in the three structured families and
+between <span class="math inline">2</span> and <span
+class="math inline">5</span> under unstructured correlation. This
+locates HRP and minimum variance at the two ends of the Schur-complement
+continuum of <span class="citation" data-cites="cotton2024schur">Cotton
+(2024)</span> along an <em>estimation-error</em> axis: our results say
+to sit near the HRP end only briefly, and to slide toward the (shrunk)
+MV end as soon as <span class="math inline">T</span> permits.</p>
+<h4 id="what-hrps-machinery-actually-contributes.">What HRP’s machinery
+actually contributes.</h4>
+<p>The decomposition across Sections <a href="#sec:ivp"
+data-reference-type="ref" data-reference="sec:ivp">6.4</a>–<a
+href="#sec:linkage" data-reference-type="ref"
+data-reference="sec:linkage">6.5</a> is unflattering to the celebrated
+parts of the algorithm. The dendrogram’s linkage rule is irrelevant
+(median spreads of <span class="math inline">0.02</span>–<span
+class="math inline">0.06</span>, and at most <span
+class="math inline">0.02</span> for the distance-matrix convention); the
+quasi-diagonalization matters only through the bisection it enables; and
+in the data-starved band the bisection improves on diagonal inverse
+variance only when clusters differ materially in tightness
+(<code>block_disp</code> terciles: <span
+class="math inline">0.35\to0.56</span> win rate vs IV), by a median
+margin under half a percent of risk—with ample data it edges IV more
+broadly (win rates <span class="math inline">0.46</span>–<span
+class="math inline">0.63</span> at <span
+class="math inline">T/N\ge5</span>), but those wins do not close the gap
+to shrinkage. HRP’s robustness—the property that sells it—comes from the
+part nobody advertises: it is approximately an inverse-variance
+portfolio, and inverse variance is hard to break. Stated plainly: if you
+want HRP’s safety, IV gives you most of it; if you want optimality,
+shrinkage gives you more of it; HRP’s niche is the intersection where
+you want a long-only, inversion-free rule that still reacts a little to
+cluster structure.</p>
+<h4 id="means-remain-the-priority.">Means remain the priority.</h4>
+<p>Nothing in the covariance debate compares to the damage of estimating
+means: a median <span class="math inline">90\%</span> of attainable
+Sharpe destroyed at <span class="math inline">T/N\le1</span>, with the
+direction outright wrong in <span class="math inline">28\%</span> of
+experiments. Practitioners arguing HRP versus shrinkage while feeding
+estimated means into anything have, in our measurements, chosen the
+wrong battle by an order of magnitude.</p>
+<h1 id="sec:limitations">Limitations</h1>
+<p>Returns in our testbed are i.i.d. across time—Gaussian in the main
+batch, multivariate Student-<span class="math inline">t</span> (common
+mixing variable, <span class="math inline">\nu\in[4,10]</span>) in the
+robustness batch—and the true covariance is constant over the estimation
+window. Real returns exhibit autocorrelation, volatility clustering,
+regime switches, and asymmetric tail dependence; all of these degrade
+every estimator, and dynamics that mimic block structure intermittently
+could shift the HRP-versus-shrinkage margin in either direction. Our
+evaluation is single-period with no transaction costs: we report
+estimation-noise turnover as a diagnostic but do not net it against risk
+performance, which would favor HRP and IV. The long-only variants use
+the crude clip-and-renormalize heuristic rather than the constrained
+quadratic program, deliberately (it is what naive implementations do),
+so our MV-LO and LW-LO numbers are lower bounds on what proper
+constrained optimization achieves. We likewise test a single shrinkage
+estimator—Ledoit–Wolf toward a scaled identity; the constant-correlation
+target <span class="citation" data-cites="ledoit2004honey">(Ledoit and
+Wolf 2004b)</span>, the factor target <span class="citation"
+data-cites="ledoit2003improved">(Ledoit and Wolf 2003)</span>, and
+nonlinear shrinkage are untested, and the lone unstructured small-<span
+class="math inline">T</span> corner where HRP edges LW might not survive
+a better-matched target. The oracle floor allows short positions, so
+long-only rules carry a structural specification gap in the risk ratio;
+this affects levels, not the paired comparisons between long-only
+methods. Our four families, though spanning factor, hierarchical,
+dense-random, and equicorrelated worlds, are all static linear
+structures—three with positive mean correlation, while the unstructured
+family’s mean off-diagonal correlation is approximately zero—and the
+mean model (<span class="math inline">\mu_i=s_i\sigma_i</span> with
+similar per-asset Sharpe ratios) is one defensible choice among several;
+the Sharpe-track levels in Table <a href="#tab:sharpe"
+data-reference-type="ref" data-reference="tab:sharpe">4</a> depend on
+it, though the risk-track results do not use means at all. Finally, we
+test HRP as specified in the original paper plus linkage variants;
+extensions (HERC, constrained or Schur-blended versions) may behave
+differently and can be dropped into the released harness.</p>
+<h1 id="sec:conclusion">Conclusion</h1>
+<p>We measured Hierarchical Risk Parity against Markowitz-type and
+shrinkage allocators in a controlled environment where the true
+covariance is known and every realized risk is exact. The popular story
+is half right. HRP’s insurance value against naive sample minimum
+variance is real and large: at <span class="math inline">T=N</span> the
+optimizer realizes a median <span class="math inline">16.8\times</span>
+the attainable risk floor and HRP <span
+class="math inline">2.3\times</span>, winning <span
+class="math inline">87\%</span> of data-starved comparisons. But against
+Ledoit–Wolf shrinkage—which cures the same singularity at the same
+computational cost—HRP loses at every <span
+class="math inline">T/N</span> in every structured family we tested,
+including the nested-hierarchical worlds it was designed for, winning
+only in the unstructured small-<span class="math inline">T</span> corner
+where its own diagonal core (inverse variance) is better still. HRP does
+not converge to the optimum as data grows (plateau at <span
+class="math inline">1.40</span>–<span
+class="math inline">3.20\times</span>), its much-debated linkage choice
+moves family medians by <span class="math inline">0.02</span>–<span
+class="math inline">0.06</span>, and its genuine advantages—no
+inversion, positive weights, low estimation-noise turnover—are inherited
+from the inverse-variance portfolio it wraps. Estimated means remain the
+catastrophe that dwarfs the covariance debate: noisy-<span
+class="math inline">\mu</span> tangency captures a median <span
+class="math inline">10\%</span> of attainable Sharpe at <span
+class="math inline">T/N\le1</span> and points the wrong way <span
+class="math inline">28\%</span> of the time. Use HRP when the structure
+is unknown and the window is short; shrink when you can; and treat any
+allocator that needs estimated means as the actual emergency.</p>
+<h4 id="reproducibility.">Reproducibility.</h4>
+<p>All experiments are deterministic given the released seeds (<span
+class="math inline">101</span> Gaussian, <span
+class="math inline">707</span> Student-<span
+class="math inline">t</span>); the script
+<code>scripts/run_all.py</code> regenerates every record, summary, and
+figure input (<code>results/results.json</code>,
+<code>results/records.csv</code>, <span
+class="math inline">4{,}800</span> experiments <span
+class="math inline">\times</span> <span class="math inline">86</span>
+recorded fields), <code>python -m hrp_experiments.figures</code>
+regenerates the four figures, and
+<code>scripts/check_paper_numbers.py</code> verifies that every number
+quoted in this paper matches the generated results. The covariance
+generator (Table <a href="#tab:ranges" data-reference-type="ref"
+data-reference="tab:ranges">1</a> is its complete parameter space),
+allocators, simulation harness, and analysis are provided as an
+open-source package at <a
+href="https://github.com/suenot/hrp-validation"
+class="uri">https://github.com/suenot/hrp-validation</a>.</p>
+<h1 id="references">References</h1><div id="refs" class="references csl-bib-body hanging-indent"
+role="list">
+<div id="ref-best1991sensitivity" class="csl-entry" role="listitem">
+Best, Michael J., and Robert R. Grauer. 1991. <span>“On the Sensitivity
+of Mean-Variance-Efficient Portfolios to Changes in Asset Means: Some
+Analytical and Computational Results.”</span> <em>The Review of
+Financial Studies</em> 4 (2): 315–42. <a
+href="https://doi.org/10.1093/rfs/4.2.315">https://doi.org/10.1093/rfs/4.2.315</a>.
+</div>
+<div id="ref-bun2017cleaning" class="csl-entry" role="listitem">
+Bun, Joël, Jean-Philippe Bouchaud, and Marc Potters. 2017.
+<span>“Cleaning Large Correlation Matrices: Tools from Random Matrix
+Theory.”</span> <em>Physics Reports</em> 666: 1–109. <a
+href="https://doi.org/10.1016/j.physrep.2016.10.005">https://doi.org/10.1016/j.physrep.2016.10.005</a>.
+</div>
+<div id="ref-chopra1993effect" class="csl-entry" role="listitem">
+Chopra, Vijay K., and William T. Ziemba. 1993. <span>“The Effect of
+Errors in Means, Variances, and Covariances on Optimal Portfolio
+Choice.”</span> <em>The Journal of Portfolio Management</em> 19 (2):
+6–11. <a
+href="https://doi.org/10.3905/jpm.1993.409440">https://doi.org/10.3905/jpm.1993.409440</a>.
+</div>
+<div id="ref-clarke2006minimum" class="csl-entry" role="listitem">
+Clarke, Roger G., Harindra de Silva, and Steven Thorley. 2006.
+<span>“Minimum-Variance Portfolios in the <span>U.S.</span> Equity
+Market.”</span> <em>The Journal of Portfolio Management</em> 33 (1):
+10–24. <a
+href="https://doi.org/10.3905/jpm.2006.661366">https://doi.org/10.3905/jpm.2006.661366</a>.
+</div>
+<div id="ref-clarke2011minimum" class="csl-entry" role="listitem">
+Clarke, Roger, Harindra de Silva, and Steven Thorley. 2011.
+<span>“Minimum-Variance Portfolio Composition.”</span> <em>The Journal
+of Portfolio Management</em> 37 (2): 31–45. <a
+href="https://doi.org/10.3905/jpm.2011.37.2.031">https://doi.org/10.3905/jpm.2011.37.2.031</a>.
+</div>
+<div id="ref-cotton2024schur" class="csl-entry" role="listitem">
+Cotton, Peter. 2024. <em>Schur Complementary Allocation: A Unification
+of Hierarchical Risk Parity and Minimum Variance Portfolios</em>. <a
+href="https://arxiv.org/abs/2411.05807">https://arxiv.org/abs/2411.05807</a>.
+</div>
+<div id="ref-demiguel2009optimal" class="csl-entry" role="listitem">
+DeMiguel, Victor, Lorenzo Garlappi, and Raman Uppal. 2009.
+<span>“Optimal Versus Naive Diversification: How Inefficient Is the
+<span>1/N</span> Portfolio Strategy?”</span> <em>The Review of Financial
+Studies</em> 22 (5): 1915–53. <a
+href="https://doi.org/10.1093/rfs/hhm075">https://doi.org/10.1093/rfs/hhm075</a>.
+</div>
+<div id="ref-jaeger2021interpretable" class="csl-entry" role="listitem">
+Jaeger, Markus, Stephan Krügel, Dimitri Marinelli, Jochen Papenbrock,
+and Peter Schwendner. 2021. <span>“Interpretable Machine Learning for
+Diversified Portfolio Construction.”</span> <em>The Journal of Financial
+Data Science</em> 3 (3): 31–51. <a
+href="https://doi.org/10.3905/jfds.2021.1.066">https://doi.org/10.3905/jfds.2021.1.066</a>.
+</div>
+<div id="ref-jagannathan2003risk" class="csl-entry" role="listitem">
+Jagannathan, Ravi, and Tongshu Ma. 2003. <span>“Risk Reduction in Large
+Portfolios: Why Imposing the Wrong Constraints Helps.”</span> <em>The
+Journal of Finance</em> 58 (4): 1651–83. <a
+href="https://doi.org/10.1111/1540-6261.00580">https://doi.org/10.1111/1540-6261.00580</a>.
+</div>
+<div id="ref-jobson1980estimation" class="csl-entry" role="listitem">
+Jobson, J. D., and Bob Korkie. 1980. <span>“Estimation for
+<span>Markowitz</span> Efficient Portfolios.”</span> <em>Journal of the
+American Statistical Association</em> 75 (371): 544–54. <a
+href="https://doi.org/10.1080/01621459.1980.10477507">https://doi.org/10.1080/01621459.1980.10477507</a>.
+</div>
+<div id="ref-jobson1981putting" class="csl-entry" role="listitem">
+Jobson, J. D., and Bob M. Korkie. 1981. <span>“Putting
+<span>Markowitz</span> Theory to Work.”</span> <em>The Journal of
+Portfolio Management</em> 7 (4): 70–74. <a
+href="https://doi.org/10.3905/jpm.1981.408816">https://doi.org/10.3905/jpm.1981.408816</a>.
+</div>
+<div id="ref-kan2007optimal" class="csl-entry" role="listitem">
+Kan, Raymond, and Guofu Zhou. 2007. <span>“Optimal Portfolio Choice with
+Parameter Uncertainty.”</span> <em>Journal of Financial and Quantitative
+Analysis</em> 42 (3): 621–56. <a
+href="https://doi.org/10.1017/S0022109000004129">https://doi.org/10.1017/S0022109000004129</a>.
+</div>
+<div id="ref-laloux1999noise" class="csl-entry" role="listitem">
+Laloux, Laurent, Pierre Cizeau, Jean-Philippe Bouchaud, and Marc
+Potters. 1999. <span>“Noise Dressing of Financial Correlation
+Matrices.”</span> <em>Physical Review Letters</em> 83 (7): 1467–70. <a
+href="https://doi.org/10.1103/PhysRevLett.83.1467">https://doi.org/10.1103/PhysRevLett.83.1467</a>.
+</div>
+<div id="ref-ledoit2003improved" class="csl-entry" role="listitem">
+Ledoit, Olivier, and Michael Wolf. 2003. <span>“Improved Estimation of
+the Covariance Matrix of Stock Returns with an Application to Portfolio
+Selection.”</span> <em>Journal of Empirical Finance</em> 10 (5): 603–21.
+<a
+href="https://doi.org/10.1016/S0927-5398(03)00007-0">https://doi.org/10.1016/S0927-5398(03)00007-0</a>.
+</div>
+<div id="ref-ledoit2004well" class="csl-entry" role="listitem">
+Ledoit, Olivier, and Michael Wolf. 2004a. <span>“A Well-Conditioned
+Estimator for Large-Dimensional Covariance Matrices.”</span> <em>Journal
+of Multivariate Analysis</em> 88 (2): 365–411. <a
+href="https://doi.org/10.1016/S0047-259X(03)00096-4">https://doi.org/10.1016/S0047-259X(03)00096-4</a>.
+</div>
+<div id="ref-ledoit2004honey" class="csl-entry" role="listitem">
+Ledoit, Olivier, and Michael Wolf. 2004b. <span>“Honey, <span>I</span>
+Shrunk the Sample Covariance Matrix.”</span> <em>The Journal of
+Portfolio Management</em> 30 (4): 110–19. <a
+href="https://doi.org/10.3905/jpm.2004.110">https://doi.org/10.3905/jpm.2004.110</a>.
+</div>
+<div id="ref-lohre2020hierarchical" class="csl-entry" role="listitem">
+Lohre, Harald, Carsten Rother, and Kilian Axel Schäfer. 2020.
+<span>“Hierarchical Risk Parity: Accounting for Tail Dependencies in
+Multi-Asset Multi-Factor Allocations.”</span> In <em>Machine Learning
+for Asset Management: New Developments and Financial Applications</em>,
+edited by Emmanuel Jurczenko. Wiley–ISTE. <a
+href="https://doi.org/10.1002/9781119751182.ch9">https://doi.org/10.1002/9781119751182.ch9</a>.
+</div>
+<div id="ref-lopezdeprado2016building" class="csl-entry"
+role="listitem">
+López de Prado, Marcos. 2016. <span>“Building Diversified Portfolios
+That Outperform Out of Sample.”</span> <em>The Journal of Portfolio
+Management</em> 42 (4): 59–69. <a
+href="https://doi.org/10.3905/jpm.2016.42.4.059">https://doi.org/10.3905/jpm.2016.42.4.059</a>.
+</div>
+<div id="ref-mantegna1999hierarchical" class="csl-entry"
+role="listitem">
+Mantegna, Rosario N. 1999. <span>“Hierarchical Structure in Financial
+Markets.”</span> <em>The European Physical Journal B</em> 11 (1):
+193–97. <a
+href="https://doi.org/10.1007/s100510050929">https://doi.org/10.1007/s100510050929</a>.
+</div>
+<div id="ref-markowitz1952portfolio" class="csl-entry" role="listitem">
+Markowitz, Harry. 1952. <span>“Portfolio Selection.”</span> <em>The
+Journal of Finance</em> 7 (1): 77–91. <a
+href="https://doi.org/10.2307/2975974">https://doi.org/10.2307/2975974</a>.
+</div>
+<div id="ref-michaud1989markowitz" class="csl-entry" role="listitem">
+Michaud, Richard O. 1989. <span>“The <span>Markowitz</span> Optimization
+Enigma: Is <span>‘Optimized’</span> Optimal?”</span> <em>Financial
+Analysts Journal</em> 45 (1): 31–42. <a
+href="https://doi.org/10.2469/faj.v45.n1.31">https://doi.org/10.2469/faj.v45.n1.31</a>.
+</div>
+<div id="ref-molyboga2020modified" class="csl-entry" role="listitem">
+Molyboga, Marat. 2020. <span>“A Modified Hierarchical Risk Parity
+Framework for Portfolio Management.”</span> <em>The Journal of Financial
+Data Science</em> 2 (3): 128–39. <a
+href="https://doi.org/10.3905/jfds.2020.1.038">https://doi.org/10.3905/jfds.2020.1.038</a>.
+</div>
+<div id="ref-murtagh2012algorithms" class="csl-entry" role="listitem">
+Murtagh, Fionn, and Pedro Contreras. 2012. <span>“Algorithms for
+Hierarchical Clustering: An Overview.”</span> <em>WIREs Data Mining and
+Knowledge Discovery</em> 2 (1): 86–97. <a
+href="https://doi.org/10.1002/widm.53">https://doi.org/10.1002/widm.53</a>.
+</div>
+<div id="ref-pfitzinger2019constrained" class="csl-entry"
+role="listitem">
+Pfitzinger, Johann, and Nico Katzke. 2019. <em>A Constrained
+Hierarchical Risk Parity Algorithm with Cluster-Based Capital
+Allocation</em>. Working Paper 14/2019. Department of Economics,
+Stellenbosch University. <a
+href="https://ideas.repec.org/p/sza/wpaper/wpapers328.html">https://ideas.repec.org/p/sza/wpaper/wpapers328.html</a>.
+</div>
+<div id="ref-plerou1999universal" class="csl-entry" role="listitem">
+Plerou, Vasiliki, Parameswaran Gopikrishnan, Bernd Rosenow, Luís A.
+Nunes Amaral, and H. Eugene Stanley. 1999. <span>“Universal and
+Nonuniversal Properties of Cross Correlations in Financial Time
+Series.”</span> <em>Physical Review Letters</em> 83 (7): 1471–74. <a
+href="https://doi.org/10.1103/PhysRevLett.83.1471">https://doi.org/10.1103/PhysRevLett.83.1471</a>.
+</div>
+<div id="ref-raffinot2017hierarchical" class="csl-entry"
+role="listitem">
+Raffinot, Thomas. 2017. <span>“Hierarchical Clustering-Based Asset
+Allocation.”</span> <em>The Journal of Portfolio Management</em> 44 (2):
+89–99. <a
+href="https://doi.org/10.3905/jpm.2018.44.2.089">https://doi.org/10.3905/jpm.2018.44.2.089</a>.
+</div>
+<div id="ref-raffinot2018herc" class="csl-entry" role="listitem">
+Raffinot, Thomas. 2018. <em>The Hierarchical Equal Risk Contribution
+Portfolio</em>. SSRN Working Paper No. 3237540. <a
+href="https://doi.org/10.2139/ssrn.3237540">https://doi.org/10.2139/ssrn.3237540</a>.
+</div>
+</div>
+<section id="footnotes" class="footnotes footnotes-end-of-document"
+role="doc-endnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Including in the author’s own earlier practitioner
+writing, where the exact pipeline tested here—single-linkage clustering
+on correlation distance, quasi-diagonalization, recursive
+inverse-variance bisection—was recommended over Markowitz inversion for
+allocating capital across market-making strategies. This paper is
+therefore a controlled self-audit of advice the author has himself
+circulated, not an attack on a third party.<a href="#fnref1"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>Even this corner is not uniform: stratified by universe
+size, HRP’s win rate against LW in the unstructured <span
+class="math inline">T/N\le1</span> pool is <span
+class="math inline">0.34</span> at <span
+class="math inline">N=10</span>, <span class="math inline">0.59</span>
+at <span class="math inline">N=30</span>, <span
+class="math inline">0.60</span> at <span
+class="math inline">N=50</span>, and <span
+class="math inline">0.69</span> at <span
+class="math inline">N=100</span>. At <span
+class="math inline">N=10</span> LW is ahead even here; the exception is
+a large-<span class="math inline">N</span>, small-<span
+class="math inline">T</span> phenomenon.<a href="#fnref2"
+class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section>
