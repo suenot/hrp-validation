@@ -312,7 +312,7 @@ suggests even this crude projection should help.</p>
 <h4 id="ledoitwolf-minimum-variance-lw-lw-lo.">Ledoit–Wolf minimum
 variance (LW, LW-LO).</h4>
 <p>Equation <a href="#eq:minvar" data-reference-type="eqref"
-data-reference="eq:minvar">[eq:minvar]</a> applied to the shrinkage
+data-reference="eq:minvar">(minvar)</a> applied to the shrinkage
 estimator of <span class="citation" data-cites="ledoit2004well">Ledoit
 and Wolf (2004a)</span>, <span class="math display">\begin{equation}
 \widehat{\Sigma}_{\mathrm{LW}} \;=\;
@@ -701,7 +701,7 @@ sampled configuration value) ship with the code.</p>
 <img src="/figures/fig_risk_vs_tn.svg" />
 <figcaption>Median realized risk relative to the oracle (Eq. <a
 href="#eq:riskratio" data-reference-type="ref"
-data-reference="eq:riskratio">[eq:riskratio]</a>, log–log axes) versus
+data-reference="eq:riskratio">(riskratio)</a>, log–log axes) versus
 <span class="math inline">T/N</span>, per true-structure family (<span
 class="math inline">179</span>–<span class="math inline">222</span>
 Gaussian experiments per point). Six of the ten risk-track methods are
@@ -721,25 +721,22 @@ to the oracle line at <span class="math inline">1</span>.</figcaption>
 <table>
 <caption>Median realized risk / oracle (Eq. <a href="#eq:riskratio"
 data-reference-type="ref"
-data-reference="eq:riskratio">[eq:riskratio]</a>) by method and
+data-reference="eq:riskratio">(riskratio)</a>) by method and
 true-structure family, at the singular point <span
 class="math inline">T/N=1</span> and in the data-rich regime <span
 class="math inline">T/N=10</span> (Gaussian batch; <span
 class="math inline">180</span>–<span class="math inline">212</span>
 experiments per cell). Bold marks each column’s best method.</caption>
-<thead>
-<tr>
-<th style="text-align: left;"></th>
-<th colspan="4" style="text-align: center;"><span
-class="math inline">T/N=1</span> (singular)</th>
-<th colspan="4" style="text-align: center;"><span
-class="math inline">T/N=10</span> (data-rich)</th>
-</tr>
-</thead>
 <tbody>
 <tr>
-<td style="text-align: left;"><span>2-5</span>(lr)<span>6-9</span>
-Method</td>
+<td style="text-align: left;"></td>
+<td colspan="4" style="text-align: center;"><span
+class="math inline">T/N=1</span> (singular)</td>
+<td colspan="4" style="text-align: center;"><span
+class="math inline">T/N=10</span> (data-rich)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Method</td>
 <td style="text-align: center;">1-fac.</td>
 <td style="text-align: center;">hier.</td>
 <td style="text-align: center;">unstr.</td>
@@ -835,7 +832,7 @@ real</h2>
 <p>At <span class="math inline">T/N\le1</span> the sample covariance is
 singular (<span class="math inline">T-1&lt;N</span> in every such
 experiment), and Eq. <a href="#eq:minvar" data-reference-type="eqref"
-data-reference="eq:minvar">[eq:minvar]</a> on the pseudoinverse is a
+data-reference="eq:minvar">(minvar)</a> on the pseudoinverse is a
 disaster: pooled across families, sample MV realizes a median <span
 class="math inline">16.8\times</span> the oracle risk at <span
 class="math inline">T/N=1</span>, exceeds <span
