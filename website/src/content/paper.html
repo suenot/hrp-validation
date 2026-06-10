@@ -1,20 +1,19 @@
 <h1 id="introduction">Introduction</h1>
 <p>Markowitz mean–variance optimization <span class="citation"
-data-cites="markowitz1952portfolio">(Markowitz 1952)</span> is provably
-optimal with known inputs and notoriously fragile with estimated ones:
-the optimizer amplifies exactly the estimation errors that matter most
-<span class="citation"
-data-cites="michaud1989markowitz best1991sensitivity chopra1993effect">(Michaud
-1989; Best and Grauer 1991; Chopra and Ziemba 1993)</span>. The most
-influential recent response in practitioner circles is Hierarchical Risk
-Parity <span class="citation"
-data-cites="lopezdeprado2016building">(HRP; López de Prado 2016)</span>,
-which never inverts a matrix: it clusters assets by correlation
-distance, reorders the covariance into quasi-diagonal form, and
-allocates top-down by recursive inverse-variance bisection. HRP is now a
-default in several open-source portfolio libraries and is routinely
-recommended as the robust replacement for Markowitz.<a href="#fn1"
-class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
+data-cites="markowitz1952portfolio">[20]</span> is provably optimal with
+known inputs and notoriously fragile with estimated ones: the optimizer
+amplifies exactly the estimation errors that matter most <span
+class="citation"
+data-cites="michaud1989markowitz best1991sensitivity chopra1993effect">[1,
+3, 21]</span>. The most influential recent response in practitioner
+circles is Hierarchical Risk Parity <span class="citation"
+data-cites="lopezdeprado2016building">[HRP; 18]</span>, which never
+inverts a matrix: it clusters assets by correlation distance, reorders
+the covariance into quasi-diagonal form, and allocates top-down by
+recursive inverse-variance bisection. HRP is now a default in several
+open-source portfolio libraries and is routinely recommended as the
+robust replacement for Markowitz.<a href="#fn1" class="footnote-ref"
+id="fnref1" role="doc-noteref"><sup>1</sup></a></p>
 <p>The evidence behind the recommendation is thinner than its adoption.
 The original paper demonstrates HRP on one numerical example and one
 Monte Carlo design, against unshrunk benchmarks; most follow-ups are
@@ -23,9 +22,8 @@ can say how far any allocator sits from the attainable optimum, or how
 much of its loss is estimation error versus specification error.
 Meanwhile the estimation-error literature has its own well-validated
 remedy—shrinkage <span class="citation"
-data-cites="ledoit2003improved ledoit2004well ledoit2004honey">(Ledoit
-and Wolf 2003, 2004a, 2004b)</span>—which is almost never the benchmark
-HRP is compared against.</p>
+data-cites="ledoit2003improved ledoit2004well ledoit2004honey">[14–16]</span>—which
+is almost never the benchmark HRP is compared against.</p>
 <p>This paper supplies the missing controlled comparison. We generate
 the true covariance <span class="math inline">\Sigma</span> from four
 structural families chosen to span the cases where HRP’s clustering
@@ -41,9 +39,8 @@ faces. We sweep the ratio <span class="math inline">T/N</span> from
 <span class="math inline">0.5</span> (deeply singular) to <span
 class="math inline">10</span> (data-rich), because the break-even
 results of <span class="citation"
-data-cites="demiguel2009optimal">DeMiguel et al. (2009)</span> identify
-exactly this ratio as the axis on which optimization beats naive
-rules.</p>
+data-cites="demiguel2009optimal">[7]</span> identify exactly this ratio
+as the axis on which optimization beats naive rules.</p>
 <p>Our findings are deliberately mixed, and more useful for it. HRP’s
 headline story—“Markowitz explodes, HRP does not”—is confirmed, and
 quantified: at <span class="math inline">T=N</span> the sample
@@ -63,8 +60,8 @@ debates, moves HRP’s data-starved win rate against its own
 inverse-variance core from <span class="math inline">0.35</span> to
 <span class="math inline">0.56</span>. And the classical disaster
 remains where <span class="citation"
-data-cites="demiguel2009optimal">DeMiguel et al. (2009)</span> located
-it: portfolios that estimate <em>means</em> capture a median <span
+data-cites="demiguel2009optimal">[7]</span> located it: portfolios that
+estimate <em>means</em> capture a median <span
 class="math inline">10\%</span> of the attainable Sharpe ratio in the
 data-starved regime and are negative <span
 class="math inline">28\%</span> of the time.</p>
@@ -127,95 +124,90 @@ data-reference="sec:mu">6.6</a>).</p></li>
 <h4 id="estimation-error-in-meanvariance-optimization.">Estimation error
 in mean–variance optimization.</h4>
 <p>Mean–variance portfolio selection <span class="citation"
-data-cites="markowitz1952portfolio">(Markowitz 1952)</span> is optimal
-only when its inputs are known; in practice they must be estimated, and
-the optimizer interacts badly with estimation noise. <span
-class="citation" data-cites="jobson1980estimation">Jobson and Korkie
-(1980)</span> showed in early Monte Carlo experiments that sample-based
-efficient portfolios can be dramatically inferior to the
-population-optimal ones, and <span class="citation"
-data-cites="jobson1981putting">Jobson and Korkie (1981)</span> argued
-that naive alternatives are often preferable in realistic sample sizes.
-<span class="citation" data-cites="michaud1989markowitz">Michaud
-(1989)</span> popularized the diagnosis of mean–variance optimizers as
+data-cites="markowitz1952portfolio">[20]</span> is optimal only when its
+inputs are known; in practice they must be estimated, and the optimizer
+interacts badly with estimation noise. <span class="citation"
+data-cites="jobson1980estimation">[10]</span> showed in early Monte
+Carlo experiments that sample-based efficient portfolios can be
+dramatically inferior to the population-optimal ones, and <span
+class="citation" data-cites="jobson1981putting">[11]</span> argued that
+naive alternatives are often preferable in realistic sample sizes. <span
+class="citation" data-cites="michaud1989markowitz">[21]</span>
+popularized the diagnosis of mean–variance optimizers as
 “estimation-error maximizers” that load on the most extreme—and most
 mis-estimated—inputs. Subsequent work quantified the mechanism: optimal
 weights are extremely sensitive to small perturbations of expected
-returns <span class="citation" data-cites="best1991sensitivity">(Best
-and Grauer 1991)</span>, errors in means dominate but covariance errors
-matter increasingly at high risk tolerance <span class="citation"
-data-cites="chopra1993effect">(Chopra and Ziemba 1993)</span>, and even
-with optimal Bayesian use of sample information, parameter uncertainty
-erodes most of the theoretical gains from optimization <span
-class="citation" data-cites="kan2007optimal">(Kan and Zhou 2007)</span>.
-The starkest statement of the problem is due to <span class="citation"
-data-cites="demiguel2009optimal">DeMiguel et al. (2009)</span>: across
-fourteen optimizing models and seven empirical datasets, none
-consistently outperforms the equally weighted <span
-class="math inline">1/N</span> portfolio out of sample, because the
-estimation window needed for sample-based mean–variance to win is far
-longer than anything available in practice. Their analysis ties the
-break-even point explicitly to the ratio of sample size to universe
-size—the same <span class="math inline">T/N</span> axis we stratify
-on.</p>
+returns <span class="citation"
+data-cites="best1991sensitivity">[1]</span>, errors in means dominate
+but covariance errors matter increasingly at high risk tolerance <span
+class="citation" data-cites="chopra1993effect">[3]</span>, and even with
+optimal Bayesian use of sample information, parameter uncertainty erodes
+most of the theoretical gains from optimization <span class="citation"
+data-cites="kan2007optimal">[12]</span>. The starkest statement of the
+problem is due to <span class="citation"
+data-cites="demiguel2009optimal">[7]</span>: across fourteen optimizing
+models and seven empirical datasets, none consistently outperforms the
+equally weighted <span class="math inline">1/N</span> portfolio out of
+sample, because the estimation window needed for sample-based
+mean–variance to win is far longer than anything available in practice.
+Their analysis ties the break-even point explicitly to the ratio of
+sample size to universe size—the same <span
+class="math inline">T/N</span> axis we stratify on.</p>
 <h4 id="covariance-focused-remedies.">Covariance-focused remedies.</h4>
 <p>One response is to abandon expected-return estimation and target the
 minimum-variance portfolio, which depends only on the covariance matrix
 and has performed well empirically <span class="citation"
-data-cites="clarke2006minimum clarke2011minimum">(Clarke et al. 2006;
-Clarke et al. 2011)</span>. But the covariance matrix itself is noisy
-when <span class="math inline">N</span> is large relative to <span
+data-cites="clarke2006minimum clarke2011minimum">[4, 5]</span>. But the
+covariance matrix itself is noisy when <span
+class="math inline">N</span> is large relative to <span
 class="math inline">T</span>. Random matrix theory shows that the bulk
 of sample correlation eigenvalues from financial data is
 indistinguishable from noise <span class="citation"
-data-cites="laloux1999noise plerou1999universal">(Laloux et al. 1999;
-Plerou et al. 1999)</span>, motivating a large literature on eigenvalue
-cleaning <span class="citation" data-cites="bun2017cleaning">(Bun et al.
-2017)</span>. Shrinkage estimators address the same ill-conditioning by
-pulling the sample covariance toward a structured target—a single-factor
-model <span class="citation" data-cites="ledoit2003improved">(Ledoit and
-Wolf 2003)</span>, a scaled identity with asymptotic optimality
-guarantees <span class="citation" data-cites="ledoit2004well">(Ledoit
-and Wolf 2004a)</span>, or the constant-correlation target of the widely
-used “Honey, I shrunk” estimator <span class="citation"
-data-cites="ledoit2004honey">(Ledoit and Wolf 2004b)</span>. <span
-class="citation" data-cites="jagannathan2003risk">Jagannathan and Ma
-(2003)</span> showed that no-short-sale constraints act as an implicit
-shrinkage of extreme covariances, which explains why constrained
-sample-based minimum-variance portfolios perform respectably. This
-literature establishes that <em>how</em> the covariance is estimated
-matters; it says less about how the optimizer’s sensitivity to the
-remaining error depends on the structure of the true covariance.</p>
+data-cites="laloux1999noise plerou1999universal">[13, 25]</span>,
+motivating a large literature on eigenvalue cleaning <span
+class="citation" data-cites="bun2017cleaning">[2]</span>. Shrinkage
+estimators address the same ill-conditioning by pulling the sample
+covariance toward a structured target—a single-factor model <span
+class="citation" data-cites="ledoit2003improved">[14]</span>, a scaled
+identity with asymptotic optimality guarantees <span class="citation"
+data-cites="ledoit2004well">[15]</span>, or the constant-correlation
+target of the widely used “Honey, I shrunk” estimator <span
+class="citation" data-cites="ledoit2004honey">[16]</span>. <span
+class="citation" data-cites="jagannathan2003risk">[9]</span> showed that
+no-short-sale constraints act as an implicit shrinkage of extreme
+covariances, which explains why constrained sample-based
+minimum-variance portfolios perform respectably. This literature
+establishes that <em>how</em> the covariance is estimated matters; it
+says less about how the optimizer’s sensitivity to the remaining error
+depends on the structure of the true covariance.</p>
 <h4 id="hierarchical-portfolio-construction.">Hierarchical portfolio
 construction.</h4>
 <p>A parallel line, rooted in the observation that financial correlation
 matrices carry a hierarchical organization <span class="citation"
-data-cites="mantegna1999hierarchical">(Mantegna 1999)</span>, sidesteps
-matrix inversion altogether. Hierarchical Risk Parity <span
-class="citation" data-cites="lopezdeprado2016building">(López de Prado
-2016)</span> clusters assets with single-linkage agglomerative
-clustering on a correlation distance, quasi-diagonalizes the covariance,
-and allocates by recursive inverse-variance bisection. <span
-class="citation" data-cites="raffinot2017hierarchical">Raffinot
-(2017)</span> proposed hierarchical clustering-based allocation with
-alternative linkages and equal weighting across clusters, later extended
-to hierarchical equal risk contribution in a working paper <span
-class="citation" data-cites="raffinot2018herc">(Raffinot 2018)</span>.
-Further extensions incorporate tail-dependence-based distances in
-multi-asset multi-factor settings <span class="citation"
-data-cites="lohre2020hierarchical">(Lohre et al. 2020)</span>,
-constraints and a continuum between cluster-level and asset-level
-allocation <span class="citation"
-data-cites="pfitzinger2019constrained">(Pfitzinger and Katzke 2019, a
-working paper)</span>, and Monte-Carlo-based modifications for managed
-futures <span class="citation"
-data-cites="molyboga2020modified">(Molyboga 2020)</span>. <span
-class="citation" data-cites="jaeger2021interpretable">Jaeger et al.
-(2021)</span> use explainable-machine-learning tools to attribute when
-and why HRP-type strategies beat equal weight in block-bootstrapped
-multi-asset data. Most recently, <span class="citation"
-data-cites="cotton2024schur">Cotton (2024)</span> showed that HRP and
-minimum variance are endpoints of a single family of Schur-complement
+data-cites="mantegna1999hierarchical">[19]</span>, sidesteps matrix
+inversion altogether. Hierarchical Risk Parity <span class="citation"
+data-cites="lopezdeprado2016building">[18]</span> clusters assets with
+single-linkage agglomerative clustering on a correlation distance,
+quasi-diagonalizes the covariance, and allocates by recursive
+inverse-variance bisection. <span class="citation"
+data-cites="raffinot2017hierarchical">[26]</span> proposed hierarchical
+clustering-based allocation with alternative linkages and equal
+weighting across clusters, later extended to hierarchical equal risk
+contribution in a working paper <span class="citation"
+data-cites="raffinot2018herc">[27]</span>. Further extensions
+incorporate tail-dependence-based distances in multi-asset multi-factor
+settings <span class="citation"
+data-cites="lohre2020hierarchical">[17]</span>, constraints and a
+continuum between cluster-level and asset-level allocation <span
+class="citation" data-cites="pfitzinger2019constrained">[24, a working
+paper]</span>, and Monte-Carlo-based modifications for managed futures
+<span class="citation" data-cites="molyboga2020modified">[22]</span>.
+<span class="citation" data-cites="jaeger2021interpretable">[8]</span>
+use explainable-machine-learning tools to attribute when and why
+HRP-type strategies beat equal weight in block-bootstrapped multi-asset
+data. Most recently, <span class="citation"
+data-cites="cotton2024schur">[6]</span> showed that HRP and minimum
+variance are endpoints of a single family of Schur-complement
 allocations, sharpening the question of where on that spectrum one
 should sit—a question whose answer must depend on estimation error.</p>
 <h4 id="the-gap.">The gap.</h4>
@@ -223,19 +215,17 @@ should sit—a question whose answer must depend on estimation error.</p>
 one Monte Carlo experiment with a particular block-diagonal-plus-shocks
 data-generating process, evaluated against unshrunk inverse-variance
 benchmarks <span class="citation"
-data-cites="lopezdeprado2016building">(López de Prado 2016)</span>.
-Follow-up studies are predominantly empirical backtests <span
-class="citation"
-data-cites="raffinot2017hierarchical lohre2020hierarchical jaeger2021interpretable">(Raffinot
-2017; Lohre et al. 2020; Jaeger et al. 2021)</span>, where the true
-covariance is unknown, so realized out-of-sample variance confounds
-estimation error with model misspecification and nonstationarity, and no
-oracle is available to measure either. Meanwhile, the <span
-class="math inline">1/N</span> literature <span class="citation"
-data-cites="demiguel2009optimal">(DeMiguel et al. 2009)</span> and the
-shrinkage literature <span class="citation"
-data-cites="ledoit2004honey ledoit2004well">(Ledoit and Wolf 2004b,
-2004a)</span> each demonstrate their preferred remedy on their own
+data-cites="lopezdeprado2016building">[18]</span>. Follow-up studies are
+predominantly empirical backtests <span class="citation"
+data-cites="raffinot2017hierarchical lohre2020hierarchical jaeger2021interpretable">[8,
+17, 26]</span>, where the true covariance is unknown, so realized
+out-of-sample variance confounds estimation error with model
+misspecification and nonstationarity, and no oracle is available to
+measure either. Meanwhile, the <span class="math inline">1/N</span>
+literature <span class="citation"
+data-cites="demiguel2009optimal">[7]</span> and the shrinkage literature
+<span class="citation" data-cites="ledoit2004honey ledoit2004well">[15,
+16]</span> each demonstrate their preferred remedy on their own
 testbeds, with no common ground truth. What is missing is a controlled
 comparison in which the true covariance is known by construction and
 varied systematically across structural families—strict factor models,
@@ -255,11 +245,11 @@ variance, and <span class="math inline">1/N</span> across structures and
 <span class="math inline">T/N</span> regimes, nor does any
 systematically examine HRP’s sensitivity to the linkage rule, despite
 the well-documented chaining behavior of single linkage <span
-class="citation" data-cites="murtagh2012algorithms">(Murtagh and
-Contreras 2012)</span> and Raffinot’s evidence that linkage choice
-materially changes hierarchical allocations <span class="citation"
-data-cites="raffinot2017hierarchical">(Raffinot 2017)</span>. This paper
-fills that gap.</p>
+class="citation" data-cites="murtagh2012algorithms">[23]</span> and
+Raffinot’s evidence that linkage choice materially changes hierarchical
+allocations <span class="citation"
+data-cites="raffinot2017hierarchical">[26]</span>. This paper fills that
+gap.</p>
 <h1 id="sec:allocators">Allocators</h1>
 <p>Every allocator maps an estimation window <span
 class="math inline">R\in\mathbb{R}^{T\times N}</span> (or the sample
@@ -269,8 +259,8 @@ class="math inline">\sum_i w_i = 1</span>; all are scored on the true
 ten methods that never see a mean estimate.</p>
 <h4 id="equal-weight-ew.">Equal weight (EW).</h4>
 <p><span class="math inline">w_i = 1/N</span>, the <span
-class="citation" data-cites="demiguel2009optimal">DeMiguel et al.
-(2009)</span> benchmark.</p>
+class="citation" data-cites="demiguel2009optimal">[7]</span>
+benchmark.</p>
 <h4 id="inverse-variance-iv.">Inverse variance (IV).</h4>
 <p><span class="math inline">w_i \propto 1/\widehat{\Sigma}_{ii}</span>,
 the diagonal-only allocator. It is the degenerate HRP that ignores all
@@ -307,14 +297,15 @@ the picture.</p>
 deliberately the crude practitioner heuristic, not the long-only
 quadratic program: it is what naive implementations do, and the
 implicit-shrinkage result of <span class="citation"
-data-cites="jagannathan2003risk">Jagannathan and Ma (2003)</span>
-suggests even this crude projection should help.</p>
+data-cites="jagannathan2003risk">[9]</span> suggests even this crude
+projection should help.</p>
 <h4 id="ledoitwolf-minimum-variance-lw-lw-lo.">Ledoit–Wolf minimum
 variance (LW, LW-LO).</h4>
 <p>Equation <a href="#eq:minvar" data-reference-type="eqref"
 data-reference="eq:minvar">(minvar)</a> applied to the shrinkage
-estimator of <span class="citation" data-cites="ledoit2004well">Ledoit
-and Wolf (2004a)</span>, <span class="math display">\begin{equation}
+estimator of <span class="citation"
+data-cites="ledoit2004well">[15]</span>, <span
+class="math display">\begin{equation}
 \widehat{\Sigma}_{\mathrm{LW}} \;=\;
 (1-\delta)\,\widehat{\Sigma}_{\mathrm{MLE}}
 \;+\;
@@ -333,8 +324,8 @@ class="math inline">T/N=10</span>.</p>
 <h4 id="hierarchical-risk-parity-hrp.">Hierarchical Risk Parity
 (HRP).</h4>
 <p>Following <span class="citation"
-data-cites="lopezdeprado2016building">López de Prado (2016)</span>, in
-four steps. (1) From the sample correlation <span
+data-cites="lopezdeprado2016building">[18]</span>, in four steps.
+(1) From the sample correlation <span
 class="math inline">\hat{\rho}</span>, form the distance <span
 class="math inline">d_{ij}=\sqrt{(1-\hat{\rho}_{ij})/2}\in[0,1]</span>.
 (2) Run agglomerative clustering; the original prescribes
@@ -878,8 +869,8 @@ class="math inline">T/N=1</span> is <span
 class="math inline">2.8</span>–<span
 class="math inline">3.8\times</span>, consistent with the
 constraints-as-shrinkage result of <span class="citation"
-data-cites="jagannathan2003risk">Jagannathan and Ma (2003)</span>—though
-it is still beaten by HRP in <span class="math inline">85</span>–<span
+data-cites="jagannathan2003risk">[9]</span>—though it is still beaten by
+HRP in <span class="math inline">85</span>–<span
 class="math inline">95\%</span> of <span
 class="math inline">T/N\le1</span> experiments per family (Table <a
 href="#tab:scorecard" data-reference-type="ref"
@@ -1128,9 +1119,9 @@ structure-conditional refinement, not a transformation.</p>
 diagnostics)</h2>
 <p>Practitioner debate spends considerable energy on the linkage rule,
 citing single linkage’s chaining pathology <span class="citation"
-data-cites="murtagh2012algorithms">(Murtagh and Contreras 2012)</span>
-and preferring average or Ward variants <span class="citation"
-data-cites="raffinot2017hierarchical">(Raffinot 2017)</span>. On the
+data-cites="murtagh2012algorithms">[23]</span> and preferring average or
+Ward variants <span class="citation"
+data-cites="raffinot2017hierarchical">[26]</span>. On the
 minimum-variance criterion the choice is immaterial in our testbed: the
 median realized-risk ratios of single/average/ward HRP per family agree
 to <span class="math inline">2.95/2.93/3.00</span> (one-factor), <span
@@ -1230,17 +1221,16 @@ inside the tangency formula helps (<span
 class="math inline">19</span>–<span class="math inline">22\%</span>
 captured) but does not rescue it; the failure is in <span
 class="math inline">\widehat{\mu}</span>, reproducing <span
-class="citation" data-cites="demiguel2009optimal">DeMiguel et al.
-(2009)</span> and the error-sensitivity hierarchy of <span
-class="citation" data-cites="chopra1993effect">Chopra and Ziemba
-(1993)</span> inside a fully controlled environment. By contrast, the
-three <span class="math inline">\mu</span>-free rules of Table <a
-href="#tab:sharpe" data-reference-type="ref"
-data-reference="tab:sharpe">4</a> capture <span
-class="math inline">26</span>–<span class="math inline">70\%</span> in
-the same regime, and even the weakest <span
-class="math inline">\mu</span>-free allocator on this track, sample
-minimum variance, captures a pooled median <span
+class="citation" data-cites="demiguel2009optimal">[7]</span> and the
+error-sensitivity hierarchy of <span class="citation"
+data-cites="chopra1993effect">[3]</span> inside a fully controlled
+environment. By contrast, the three <span
+class="math inline">\mu</span>-free rules of Table <a href="#tab:sharpe"
+data-reference-type="ref" data-reference="tab:sharpe">4</a> capture
+<span class="math inline">26</span>–<span
+class="math inline">70\%</span> in the same regime, and even the weakest
+<span class="math inline">\mu</span>-free allocator on this track,
+sample minimum variance, captures a pooled median <span
 class="math inline">18\%</span> (per-family medians <span
 class="math inline">0.15</span>–<span
 class="math inline">0.25</span>)—nearly twice the noisy-<span
@@ -1553,10 +1543,11 @@ class="math inline">2</span> in the three structured families and
 between <span class="math inline">2</span> and <span
 class="math inline">5</span> under unstructured correlation. This
 locates HRP and minimum variance at the two ends of the Schur-complement
-continuum of <span class="citation" data-cites="cotton2024schur">Cotton
-(2024)</span> along an <em>estimation-error</em> axis: our results say
-to sit near the HRP end only briefly, and to slide toward the (shrunk)
-MV end as soon as <span class="math inline">T</span> permits.</p>
+continuum of <span class="citation"
+data-cites="cotton2024schur">[6]</span> along an
+<em>estimation-error</em> axis: our results say to sit near the HRP end
+only briefly, and to slide toward the (shrunk) MV end as soon as <span
+class="math inline">T</span> permits.</p>
 <h4 id="what-hrps-machinery-actually-contributes.">What HRP’s machinery
 actually contributes.</h4>
 <p>The decomposition across Sections <a href="#sec:ivp"
@@ -1608,10 +1599,10 @@ quadratic program, deliberately (it is what naive implementations do),
 so our MV-LO and LW-LO numbers are lower bounds on what proper
 constrained optimization achieves. We likewise test a single shrinkage
 estimator—Ledoit–Wolf toward a scaled identity; the constant-correlation
-target <span class="citation" data-cites="ledoit2004honey">(Ledoit and
-Wolf 2004b)</span>, the factor target <span class="citation"
-data-cites="ledoit2003improved">(Ledoit and Wolf 2003)</span>, and
-nonlinear shrinkage are untested, and the lone unstructured small-<span
+target <span class="citation" data-cites="ledoit2004honey">[16]</span>,
+the factor target <span class="citation"
+data-cites="ledoit2003improved">[14]</span>, and nonlinear shrinkage are
+untested, and the lone unstructured small-<span
 class="math inline">T</span> corner where HRP edges LW might not survive
 a better-matched target. The oracle floor allows short positions, so
 long-only rules carry a structural specification gap in the risk ratio;
@@ -1678,180 +1669,209 @@ allocators, simulation harness, and analysis are provided as an
 open-source package at <a
 href="https://github.com/suenot/hrp-validation"
 class="uri">https://github.com/suenot/hrp-validation</a>.</p>
-<h1 id="references">References</h1><div id="refs" class="references csl-bib-body hanging-indent"
+<h1 id="references">References</h1><div id="refs" class="references csl-bib-body" data-entry-spacing="1"
 role="list">
 <div id="ref-best1991sensitivity" class="csl-entry" role="listitem">
-Best, Michael J., and Robert R. Grauer. 1991. <span>“On the Sensitivity
-of Mean-Variance-Efficient Portfolios to Changes in Asset Means: Some
-Analytical and Computational Results.”</span> <em>The Review of
-Financial Studies</em> 4 (2): 315–42. <a
-href="https://doi.org/10.1093/rfs/4.2.315">https://doi.org/10.1093/rfs/4.2.315</a>.
+<div class="csl-left-margin">[1] </div><div
+class="csl-right-inline">Michael J. Best and Robert R. Grauer. On the
+sensitivity of mean-variance-efficient portfolios to changes in asset
+means: Some analytical and computational results. <em>The Review of
+Financial Studies</em>, 4(2):315–342, 1991. doi: <a
+href="https://doi.org/10.1093/rfs/4.2.315">10.1093/rfs/4.2.315</a>.</div>
 </div>
 <div id="ref-bun2017cleaning" class="csl-entry" role="listitem">
-Bun, Joël, Jean-Philippe Bouchaud, and Marc Potters. 2017.
-<span>“Cleaning Large Correlation Matrices: Tools from Random Matrix
-Theory.”</span> <em>Physics Reports</em> 666: 1–109. <a
-href="https://doi.org/10.1016/j.physrep.2016.10.005">https://doi.org/10.1016/j.physrep.2016.10.005</a>.
+<div class="csl-left-margin">[2] </div><div
+class="csl-right-inline">Joël Bun, Jean-Philippe Bouchaud, and Marc
+Potters. Cleaning large correlation matrices: Tools from random matrix
+theory. <em>Physics Reports</em>, 666:1–109, 2017. doi: <a
+href="https://doi.org/10.1016/j.physrep.2016.10.005">10.1016/j.physrep.2016.10.005</a>.</div>
 </div>
 <div id="ref-chopra1993effect" class="csl-entry" role="listitem">
-Chopra, Vijay K., and William T. Ziemba. 1993. <span>“The Effect of
-Errors in Means, Variances, and Covariances on Optimal Portfolio
-Choice.”</span> <em>The Journal of Portfolio Management</em> 19 (2):
-6–11. <a
-href="https://doi.org/10.3905/jpm.1993.409440">https://doi.org/10.3905/jpm.1993.409440</a>.
+<div class="csl-left-margin">[3] </div><div
+class="csl-right-inline">Vijay K. Chopra and William T. Ziemba. The
+effect of errors in means, variances, and covariances on optimal
+portfolio choice. <em>The Journal of Portfolio Management</em>,
+19(2):6–11, 1993. doi: <a
+href="https://doi.org/10.3905/jpm.1993.409440">10.3905/jpm.1993.409440</a>.</div>
 </div>
 <div id="ref-clarke2006minimum" class="csl-entry" role="listitem">
-Clarke, Roger G., Harindra de Silva, and Steven Thorley. 2006.
-<span>“Minimum-Variance Portfolios in the <span>U.S.</span> Equity
-Market.”</span> <em>The Journal of Portfolio Management</em> 33 (1):
-10–24. <a
-href="https://doi.org/10.3905/jpm.2006.661366">https://doi.org/10.3905/jpm.2006.661366</a>.
+<div class="csl-left-margin">[4] </div><div
+class="csl-right-inline">Roger G. Clarke, Harindra de Silva, and Steven
+Thorley. Minimum-variance portfolios in the <span>U.S.</span> Equity
+market. <em>The Journal of Portfolio Management</em>, 33(1):10–24, 2006.
+doi: <a
+href="https://doi.org/10.3905/jpm.2006.661366">10.3905/jpm.2006.661366</a>.</div>
 </div>
 <div id="ref-clarke2011minimum" class="csl-entry" role="listitem">
-Clarke, Roger, Harindra de Silva, and Steven Thorley. 2011.
-<span>“Minimum-Variance Portfolio Composition.”</span> <em>The Journal
-of Portfolio Management</em> 37 (2): 31–45. <a
-href="https://doi.org/10.3905/jpm.2011.37.2.031">https://doi.org/10.3905/jpm.2011.37.2.031</a>.
+<div class="csl-left-margin">[5] </div><div
+class="csl-right-inline">Roger Clarke, Harindra de Silva, and Steven
+Thorley. Minimum-variance portfolio composition. <em>The Journal of
+Portfolio Management</em>, 37(2):31–45, 2011. doi: <a
+href="https://doi.org/10.3905/jpm.2011.37.2.031">10.3905/jpm.2011.37.2.031</a>.</div>
 </div>
 <div id="ref-cotton2024schur" class="csl-entry" role="listitem">
-Cotton, Peter. 2024. <em>Schur Complementary Allocation: A Unification
-of Hierarchical Risk Parity and Minimum Variance Portfolios</em>. <a
-href="https://arxiv.org/abs/2411.05807">https://arxiv.org/abs/2411.05807</a>.
+<div class="csl-left-margin">[6] </div><div
+class="csl-right-inline">Peter Cotton. <a
+href="https://arxiv.org/abs/2411.05807">Schur complementary allocation:
+A unification of hierarchical risk parity and minimum variance
+portfolios</a>. 2024.</div>
 </div>
 <div id="ref-demiguel2009optimal" class="csl-entry" role="listitem">
-DeMiguel, Victor, Lorenzo Garlappi, and Raman Uppal. 2009.
-<span>“Optimal Versus Naive Diversification: How Inefficient Is the
-<span>1/N</span> Portfolio Strategy?”</span> <em>The Review of Financial
-Studies</em> 22 (5): 1915–53. <a
-href="https://doi.org/10.1093/rfs/hhm075">https://doi.org/10.1093/rfs/hhm075</a>.
+<div class="csl-left-margin">[7] </div><div
+class="csl-right-inline">Victor DeMiguel, Lorenzo Garlappi, and Raman
+Uppal. Optimal versus naive diversification: How inefficient is the
+<span>1/N</span> portfolio strategy? <em>The Review of Financial
+Studies</em>, 22(5):1915–1953, 2009. doi: <a
+href="https://doi.org/10.1093/rfs/hhm075">10.1093/rfs/hhm075</a>.</div>
 </div>
 <div id="ref-jaeger2021interpretable" class="csl-entry" role="listitem">
-Jaeger, Markus, Stephan Krügel, Dimitri Marinelli, Jochen Papenbrock,
-and Peter Schwendner. 2021. <span>“Interpretable Machine Learning for
-Diversified Portfolio Construction.”</span> <em>The Journal of Financial
-Data Science</em> 3 (3): 31–51. <a
-href="https://doi.org/10.3905/jfds.2021.1.066">https://doi.org/10.3905/jfds.2021.1.066</a>.
+<div class="csl-left-margin">[8] </div><div
+class="csl-right-inline">Markus Jaeger, Stephan Krügel, Dimitri
+Marinelli, Jochen Papenbrock, and Peter Schwendner. Interpretable
+machine learning for diversified portfolio construction. <em>The Journal
+of Financial Data Science</em>, 3(3):31–51, 2021. doi: <a
+href="https://doi.org/10.3905/jfds.2021.1.066">10.3905/jfds.2021.1.066</a>.</div>
 </div>
 <div id="ref-jagannathan2003risk" class="csl-entry" role="listitem">
-Jagannathan, Ravi, and Tongshu Ma. 2003. <span>“Risk Reduction in Large
-Portfolios: Why Imposing the Wrong Constraints Helps.”</span> <em>The
-Journal of Finance</em> 58 (4): 1651–83. <a
-href="https://doi.org/10.1111/1540-6261.00580">https://doi.org/10.1111/1540-6261.00580</a>.
+<div class="csl-left-margin">[9] </div><div
+class="csl-right-inline">Ravi Jagannathan and Tongshu Ma. Risk reduction
+in large portfolios: Why imposing the wrong constraints helps. <em>The
+Journal of Finance</em>, 58(4):1651–1683, 2003. doi: <a
+href="https://doi.org/10.1111/1540-6261.00580">10.1111/1540-6261.00580</a>.</div>
 </div>
 <div id="ref-jobson1980estimation" class="csl-entry" role="listitem">
-Jobson, J. D., and Bob Korkie. 1980. <span>“Estimation for
-<span>Markowitz</span> Efficient Portfolios.”</span> <em>Journal of the
-American Statistical Association</em> 75 (371): 544–54. <a
-href="https://doi.org/10.1080/01621459.1980.10477507">https://doi.org/10.1080/01621459.1980.10477507</a>.
+<div class="csl-left-margin">[10] </div><div class="csl-right-inline">J.
+D. Jobson and Bob Korkie. Estimation for <span>Markowitz</span>
+efficient portfolios. <em>Journal of the American Statistical
+Association</em>, 75(371):544–554, 1980. doi: <a
+href="https://doi.org/10.1080/01621459.1980.10477507">10.1080/01621459.1980.10477507</a>.</div>
 </div>
 <div id="ref-jobson1981putting" class="csl-entry" role="listitem">
-Jobson, J. D., and Bob M. Korkie. 1981. <span>“Putting
-<span>Markowitz</span> Theory to Work.”</span> <em>The Journal of
-Portfolio Management</em> 7 (4): 70–74. <a
-href="https://doi.org/10.3905/jpm.1981.408816">https://doi.org/10.3905/jpm.1981.408816</a>.
+<div class="csl-left-margin">[11] </div><div class="csl-right-inline">J.
+D. Jobson and Bob M. Korkie. Putting <span>Markowitz</span> theory to
+work. <em>The Journal of Portfolio Management</em>, 7(4):70–74, 1981.
+doi: <a
+href="https://doi.org/10.3905/jpm.1981.408816">10.3905/jpm.1981.408816</a>.</div>
 </div>
 <div id="ref-kan2007optimal" class="csl-entry" role="listitem">
-Kan, Raymond, and Guofu Zhou. 2007. <span>“Optimal Portfolio Choice with
-Parameter Uncertainty.”</span> <em>Journal of Financial and Quantitative
-Analysis</em> 42 (3): 621–56. <a
-href="https://doi.org/10.1017/S0022109000004129">https://doi.org/10.1017/S0022109000004129</a>.
+<div class="csl-left-margin">[12] </div><div
+class="csl-right-inline">Raymond Kan and Guofu Zhou. Optimal portfolio
+choice with parameter uncertainty. <em>Journal of Financial and
+Quantitative Analysis</em>, 42(3):621–656, 2007. doi: <a
+href="https://doi.org/10.1017/S0022109000004129">10.1017/S0022109000004129</a>.</div>
 </div>
 <div id="ref-laloux1999noise" class="csl-entry" role="listitem">
-Laloux, Laurent, Pierre Cizeau, Jean-Philippe Bouchaud, and Marc
-Potters. 1999. <span>“Noise Dressing of Financial Correlation
-Matrices.”</span> <em>Physical Review Letters</em> 83 (7): 1467–70. <a
-href="https://doi.org/10.1103/PhysRevLett.83.1467">https://doi.org/10.1103/PhysRevLett.83.1467</a>.
+<div class="csl-left-margin">[13] </div><div
+class="csl-right-inline">Laurent Laloux, Pierre Cizeau, Jean-Philippe
+Bouchaud, and Marc Potters. Noise dressing of financial correlation
+matrices. <em>Physical Review Letters</em>, 83(7):1467–1470, 1999. doi:
+<a
+href="https://doi.org/10.1103/PhysRevLett.83.1467">10.1103/PhysRevLett.83.1467</a>.</div>
 </div>
 <div id="ref-ledoit2003improved" class="csl-entry" role="listitem">
-Ledoit, Olivier, and Michael Wolf. 2003. <span>“Improved Estimation of
-the Covariance Matrix of Stock Returns with an Application to Portfolio
-Selection.”</span> <em>Journal of Empirical Finance</em> 10 (5): 603–21.
-<a
-href="https://doi.org/10.1016/S0927-5398(03)00007-0">https://doi.org/10.1016/S0927-5398(03)00007-0</a>.
+<div class="csl-left-margin">[14] </div><div
+class="csl-right-inline">Olivier Ledoit and Michael Wolf. Improved
+estimation of the covariance matrix of stock returns with an application
+to portfolio selection. <em>Journal of Empirical Finance</em>,
+10(5):603–621, 2003. doi: <a
+href="https://doi.org/10.1016/S0927-5398(03)00007-0">10.1016/S0927-5398(03)00007-0</a>.</div>
 </div>
 <div id="ref-ledoit2004well" class="csl-entry" role="listitem">
-Ledoit, Olivier, and Michael Wolf. 2004a. <span>“A Well-Conditioned
-Estimator for Large-Dimensional Covariance Matrices.”</span> <em>Journal
-of Multivariate Analysis</em> 88 (2): 365–411. <a
-href="https://doi.org/10.1016/S0047-259X(03)00096-4">https://doi.org/10.1016/S0047-259X(03)00096-4</a>.
+<div class="csl-left-margin">[15] </div><div
+class="csl-right-inline">Olivier Ledoit and Michael Wolf. A
+well-conditioned estimator for large-dimensional covariance matrices.
+<em>Journal of Multivariate Analysis</em>, 88(2):365–411, 2004. doi: <a
+href="https://doi.org/10.1016/S0047-259X(03)00096-4">10.1016/S0047-259X(03)00096-4</a>.</div>
 </div>
 <div id="ref-ledoit2004honey" class="csl-entry" role="listitem">
-Ledoit, Olivier, and Michael Wolf. 2004b. <span>“Honey, <span>I</span>
-Shrunk the Sample Covariance Matrix.”</span> <em>The Journal of
-Portfolio Management</em> 30 (4): 110–19. <a
-href="https://doi.org/10.3905/jpm.2004.110">https://doi.org/10.3905/jpm.2004.110</a>.
+<div class="csl-left-margin">[16] </div><div
+class="csl-right-inline">Olivier Ledoit and Michael Wolf. Honey,
+<span>I</span> shrunk the sample covariance matrix. <em>The Journal of
+Portfolio Management</em>, 30(4):110–119, 2004. doi: <a
+href="https://doi.org/10.3905/jpm.2004.110">10.3905/jpm.2004.110</a>.</div>
 </div>
 <div id="ref-lohre2020hierarchical" class="csl-entry" role="listitem">
-Lohre, Harald, Carsten Rother, and Kilian Axel Schäfer. 2020.
-<span>“Hierarchical Risk Parity: Accounting for Tail Dependencies in
-Multi-Asset Multi-Factor Allocations.”</span> In <em>Machine Learning
-for Asset Management: New Developments and Financial Applications</em>,
-edited by Emmanuel Jurczenko. Wiley–ISTE. <a
-href="https://doi.org/10.1002/9781119751182.ch9">https://doi.org/10.1002/9781119751182.ch9</a>.
+<div class="csl-left-margin">[17] </div><div
+class="csl-right-inline">Harald Lohre, Carsten Rother, and Kilian Axel
+Schäfer. Hierarchical risk parity: Accounting for tail dependencies in
+multi-asset multi-factor allocations. In <em>Machine learning for asset
+management: New developments and financial applications</em>, pages
+329–368, 2020. doi: <a
+href="https://doi.org/10.1002/9781119751182.ch9">10.1002/9781119751182.ch9</a>.</div>
 </div>
 <div id="ref-lopezdeprado2016building" class="csl-entry"
 role="listitem">
-López de Prado, Marcos. 2016. <span>“Building Diversified Portfolios
-That Outperform Out of Sample.”</span> <em>The Journal of Portfolio
-Management</em> 42 (4): 59–69. <a
-href="https://doi.org/10.3905/jpm.2016.42.4.059">https://doi.org/10.3905/jpm.2016.42.4.059</a>.
+<div class="csl-left-margin">[18] </div><div
+class="csl-right-inline">Marcos López de Prado. Building diversified
+portfolios that outperform out of sample. <em>The Journal of Portfolio
+Management</em>, 42(4):59–69, 2016. doi: <a
+href="https://doi.org/10.3905/jpm.2016.42.4.059">10.3905/jpm.2016.42.4.059</a>.</div>
 </div>
 <div id="ref-mantegna1999hierarchical" class="csl-entry"
 role="listitem">
-Mantegna, Rosario N. 1999. <span>“Hierarchical Structure in Financial
-Markets.”</span> <em>The European Physical Journal B</em> 11 (1):
-193–97. <a
-href="https://doi.org/10.1007/s100510050929">https://doi.org/10.1007/s100510050929</a>.
+<div class="csl-left-margin">[19] </div><div
+class="csl-right-inline">Rosario N. Mantegna. Hierarchical structure in
+financial markets. <em>The European Physical Journal B</em>,
+11(1):193–197, 1999. doi: <a
+href="https://doi.org/10.1007/s100510050929">10.1007/s100510050929</a>.</div>
 </div>
 <div id="ref-markowitz1952portfolio" class="csl-entry" role="listitem">
-Markowitz, Harry. 1952. <span>“Portfolio Selection.”</span> <em>The
-Journal of Finance</em> 7 (1): 77–91. <a
-href="https://doi.org/10.2307/2975974">https://doi.org/10.2307/2975974</a>.
+<div class="csl-left-margin">[20] </div><div
+class="csl-right-inline">Harry Markowitz. Portfolio selection. <em>The
+Journal of Finance</em>, 7(1):77–91, 1952. doi: <a
+href="https://doi.org/10.2307/2975974">10.2307/2975974</a>.</div>
 </div>
 <div id="ref-michaud1989markowitz" class="csl-entry" role="listitem">
-Michaud, Richard O. 1989. <span>“The <span>Markowitz</span> Optimization
-Enigma: Is <span>‘Optimized’</span> Optimal?”</span> <em>Financial
-Analysts Journal</em> 45 (1): 31–42. <a
-href="https://doi.org/10.2469/faj.v45.n1.31">https://doi.org/10.2469/faj.v45.n1.31</a>.
+<div class="csl-left-margin">[21] </div><div
+class="csl-right-inline">Richard O. Michaud. The <span>Markowitz</span>
+optimization enigma: Is <span>“optimized”</span> optimal? <em>Financial
+Analysts Journal</em>, 45(1):31–42, 1989. doi: <a
+href="https://doi.org/10.2469/faj.v45.n1.31">10.2469/faj.v45.n1.31</a>.</div>
 </div>
 <div id="ref-molyboga2020modified" class="csl-entry" role="listitem">
-Molyboga, Marat. 2020. <span>“A Modified Hierarchical Risk Parity
-Framework for Portfolio Management.”</span> <em>The Journal of Financial
-Data Science</em> 2 (3): 128–39. <a
-href="https://doi.org/10.3905/jfds.2020.1.038">https://doi.org/10.3905/jfds.2020.1.038</a>.
+<div class="csl-left-margin">[22] </div><div
+class="csl-right-inline">Marat Molyboga. A modified hierarchical risk
+parity framework for portfolio management. <em>The Journal of Financial
+Data Science</em>, 2(3):128–139, 2020. doi: <a
+href="https://doi.org/10.3905/jfds.2020.1.038">10.3905/jfds.2020.1.038</a>.</div>
 </div>
 <div id="ref-murtagh2012algorithms" class="csl-entry" role="listitem">
-Murtagh, Fionn, and Pedro Contreras. 2012. <span>“Algorithms for
-Hierarchical Clustering: An Overview.”</span> <em>WIREs Data Mining and
-Knowledge Discovery</em> 2 (1): 86–97. <a
-href="https://doi.org/10.1002/widm.53">https://doi.org/10.1002/widm.53</a>.
+<div class="csl-left-margin">[23] </div><div
+class="csl-right-inline">Fionn Murtagh and Pedro Contreras. Algorithms
+for hierarchical clustering: An overview. <em>WIREs Data Mining and
+Knowledge Discovery</em>, 2(1):86–97, 2012. doi: <a
+href="https://doi.org/10.1002/widm.53">10.1002/widm.53</a>.</div>
 </div>
 <div id="ref-pfitzinger2019constrained" class="csl-entry"
 role="listitem">
-Pfitzinger, Johann, and Nico Katzke. 2019. <em>A Constrained
-Hierarchical Risk Parity Algorithm with Cluster-Based Capital
-Allocation</em>. Working Paper 14/2019. Department of Economics,
-Stellenbosch University. <a
-href="https://ideas.repec.org/p/sza/wpaper/wpapers328.html">https://ideas.repec.org/p/sza/wpaper/wpapers328.html</a>.
+<div class="csl-left-margin">[24] </div><div
+class="csl-right-inline">Johann Pfitzinger and Nico Katzke. <a
+href="https://ideas.repec.org/p/sza/wpaper/wpapers328.html">A
+constrained hierarchical risk parity algorithm with cluster-based
+capital allocation</a>. Department of Economics, Stellenbosch
+University, 2019.</div>
 </div>
 <div id="ref-plerou1999universal" class="csl-entry" role="listitem">
-Plerou, Vasiliki, Parameswaran Gopikrishnan, Bernd Rosenow, Luís A.
-Nunes Amaral, and H. Eugene Stanley. 1999. <span>“Universal and
-Nonuniversal Properties of Cross Correlations in Financial Time
-Series.”</span> <em>Physical Review Letters</em> 83 (7): 1471–74. <a
-href="https://doi.org/10.1103/PhysRevLett.83.1471">https://doi.org/10.1103/PhysRevLett.83.1471</a>.
+<div class="csl-left-margin">[25] </div><div
+class="csl-right-inline">Vasiliki Plerou, Parameswaran Gopikrishnan,
+Bernd Rosenow, Luís A. Nunes Amaral, and H. Eugene Stanley. Universal
+and nonuniversal properties of cross correlations in financial time
+series. <em>Physical Review Letters</em>, 83(7):1471–1474, 1999. doi: <a
+href="https://doi.org/10.1103/PhysRevLett.83.1471">10.1103/PhysRevLett.83.1471</a>.</div>
 </div>
 <div id="ref-raffinot2017hierarchical" class="csl-entry"
 role="listitem">
-Raffinot, Thomas. 2017. <span>“Hierarchical Clustering-Based Asset
-Allocation.”</span> <em>The Journal of Portfolio Management</em> 44 (2):
-89–99. <a
-href="https://doi.org/10.3905/jpm.2018.44.2.089">https://doi.org/10.3905/jpm.2018.44.2.089</a>.
+<div class="csl-left-margin">[26] </div><div
+class="csl-right-inline">Thomas Raffinot. Hierarchical clustering-based
+asset allocation. <em>The Journal of Portfolio Management</em>,
+44(2):89–99, 2017. doi: <a
+href="https://doi.org/10.3905/jpm.2018.44.2.089">10.3905/jpm.2018.44.2.089</a>.</div>
 </div>
 <div id="ref-raffinot2018herc" class="csl-entry" role="listitem">
-Raffinot, Thomas. 2018. <em>The Hierarchical Equal Risk Contribution
-Portfolio</em>. SSRN Working Paper No. 3237540. <a
-href="https://doi.org/10.2139/ssrn.3237540">https://doi.org/10.2139/ssrn.3237540</a>.
+<div class="csl-left-margin">[27] </div><div
+class="csl-right-inline">Thomas Raffinot. The hierarchical equal risk
+contribution portfolio. SSRN Working Paper No. 3237540, 2018. doi: <a
+href="https://doi.org/10.2139/ssrn.3237540">10.2139/ssrn.3237540</a>.</div>
 </div>
 </div>
 <section id="footnotes" class="footnotes footnotes-end-of-document"
